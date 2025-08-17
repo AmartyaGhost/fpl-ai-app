@@ -29,7 +29,7 @@ class FPLDataManager:
         """Gets the main FPL bootstrap data."""
         return _self.session.get(f"{_self.base_url}bootstrap-static/").json()
 
-    # [UPDATED] Function now fetches all matches for a specific gameweek
+    # Updated to fetch all matches for a specific gameweek
     def get_live_scores(_self, gameweek):
         """Fetches all PL scores for a gameweek from football-data.org API."""
         headers = {'X-Auth-Token': _self.api_key}
@@ -277,7 +277,8 @@ def live_tracker_page():
     dm = FPLDataManager()
     
     bootstrap = dm.get_bootstrap_data()
-    teams = dm.get_team_data()
+    # [FIX] Set index to 'short_name' for reliable lookup
+    fpl_teams_df = dm.get_team_data().set_index('short_name')
     current_gw = next((gw['id'] for gw in bootstrap['events'] if gw['is_current']), None)
     
     if not current_gw:
@@ -314,55 +315,61 @@ def live_tracker_page():
             
         live_scores_data = dm.get_live_scores(gameweek=current_gw)
         
-        if live_scores_data and live_scores_data['matches']:
+        if live_scores_data and live_scores_data.get('matches'):
             matches_df = pd.DataFrame(live_scores_data['matches'])
             matches_df['utcDate'] = pd.to_datetime(matches_df['utcDate'])
             matches_df = matches_df.sort_values(by='utcDate')
 
             current_date = ""
             for _, match in matches_df.iterrows():
-                utc_time = match['utcDate']
-                ist_time = utc_time + timedelta(hours=5, minutes=30)
-                match_date_str = ist_time.strftime('%a %d %b') # e.g., Sun 17 Aug
-                
-                if match_date_str != current_date:
-                    st.markdown(f"<h5 style='margin-top: 20px;'>{match_date_str}</h5>", unsafe_allow_html=True)
-                    current_date = match_date_str
+                try:
+                    utc_time = match['utcDate']
+                    ist_time = utc_time + timedelta(hours=5, minutes=30)
+                    match_date_str = ist_time.strftime('%a %d %b')
+                    
+                    if match_date_str != current_date:
+                        st.markdown(f"<h5 style='margin-top: 20px;'>{match_date_str}</h5>", unsafe_allow_html=True)
+                        current_date = match_date_str
 
-                home_team = teams[teams['id'] == match['homeTeam']['id']].iloc[0]
-                away_team = teams[teams['id'] == match['awayTeam']['id']].iloc[0]
-                
-                status = match['status']
-                if status == 'FINISHED':
-                    time_display = "FT"
-                    score_display = f"{match['score']['fullTime']['home']} - {match['score']['fullTime']['away']}"
-                    live_indicator = ""
-                elif status in ('IN_PLAY', 'PAUSED'):
-                    minute = match.get('minute', 'HT')
-                    time_display = f"{minute}'" if isinstance(minute, int) else "HT"
-                    score_display = f"{match['score']['fullTime']['home']} - {match['score']['fullTime']['away']}"
-                    live_indicator = "<span class='blinking-dot'></span>"
-                else: # SCHEDULED or TIMED
-                    time_display = "IST"
-                    score_display = ist_time.strftime('%H:%M')
-                    live_indicator = ""
+                    # [FIX] Look up teams by their three-letter name ('tla') instead of mismatched IDs
+                    home_team = fpl_teams_df.loc[match['homeTeam']['tla']]
+                    away_team = fpl_teams_df.loc[match['awayTeam']['tla']]
+                    
+                    status = match['status']
+                    score = match['score']
+                    
+                    if status == 'FINISHED':
+                        time_display, live_indicator = "FT", ""
+                        score_display = f"{score['fullTime']['home']} - {score['fullTime']['away']}"
+                    elif status in ('IN_PLAY', 'PAUSED'):
+                        minute = match.get('minute', 'HT')
+                        time_display = f"{minute}'" if isinstance(minute, int) else "HT"
+                        score_display = f"{score['fullTime']['home']} - {score['fullTime']['away']}"
+                        live_indicator = "<span class='blinking-dot'></span>"
+                    else: # SCHEDULED or TIMED
+                        time_display, live_indicator = "IST", ""
+                        score_display = ist_time.strftime('%H:%M')
 
-                st.markdown(f"""
-                    <div class="match-row">
-                        <div class="status">{live_indicator}{time_display}</div>
-                        <div class="team" style="justify-content: flex-end;">
-                            <span class="team-name">{home_team['name']}</span>
-                            <img src="{home_team['crest_url']}" width="25">
+                    st.markdown(f"""
+                        <div class="match-row">
+                            <div class="status">{live_indicator}{time_display}</div>
+                            <div class="team" style="justify-content: flex-end;">
+                                <span class="team-name">{home_team['name']}</span>
+                                <img src="{home_team['crest_url']}" width="25">
+                            </div>
+                            <div class="score">{score_display}</div>
+                            <div class="team">
+                                <img src="{away_team['crest_url']}" width="25">
+                                <span class="team-name">{away_team['name']}</span>
+                            </div>
                         </div>
-                        <div class="score">{score_display}</div>
-                        <div class="team">
-                            <img src="{away_team['crest_url']}" width="25">
-                            <span class="team-name">{away_team['name']}</span>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
+                except KeyError as e:
+                    # This will skip any match where the team name doesn't match, preventing crashes
+                    st.warning(f"Could not find team data for a match involving '{e.args[0]}'. Skipping.")
+                    continue
         else:
-            st.info("Could not fetch live match data. This may be due to an invalid API key or no matches scheduled.")
+            st.info("Could not fetch live match data or no matches scheduled for this gameweek.")
 
 
 def get_chip_recommendation(squad_df: pd.DataFrame):
@@ -400,23 +407,19 @@ def strategy_guide_page():
     
     st.markdown("""
     Here is a general guide on when to consider using your chips throughout the season.
-    
     ---
     ### Wildcard (WC) 🃏
     You get two of these. Use them to completely overhaul your team.
     - **First Wildcard (Use before GW20):** The best time is typically between **Gameweeks 4 and 8**.
     - **Second Wildcard (Use after GW20):** Best saved for navigating "Double" (DGWs) and "Blank" (BGWs) Gameweeks, usually around **GW28-GW36**.
-    
     ---
     ### Bench Boost (BB) ⚡
     All 15 of your players score points for one week.
     - **When to use:** Only use this during a **Double Gameweek (DGW)**.
-    
     ---
     ### Triple Captain (TC) ©️
     Your captain's points are tripled instead of doubled.
     - **When to use:** Use this on a star player during a **Double Gameweek (DGW)**.
-    
     ---
     ### Free Hit (FH) 🆓
     Lets you make unlimited transfers for a single gameweek.
