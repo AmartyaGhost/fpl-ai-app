@@ -1,5 +1,5 @@
 # fpl_streamlit_app.py
-# FPL AI Optimizer (v10 - Jersey UI)
+# FPL AI Optimizer (v11 - Captaincy Picks)
 # By Gemini
 
 import streamlit as st
@@ -10,10 +10,8 @@ import pulp
 # --- Page Configuration ---
 st.set_page_config(page_title="FPL AI Optimizer", page_icon="⚽", layout="wide")
 
-# --- NEW: Team Jersey Mapping ---
-# This dictionary maps team names to their jersey image URLs.
+# --- Team Jersey Mapping ---
 TEAM_JERSEYS = {
-    # NOTE: These are based on the 24/25 season. You may need to update URLs for the 25/26 season.
     'Arsenal': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_3-66.png',
     'Aston Villa': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_7-66.png',
     'Bournemouth': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_91-66.png',
@@ -23,17 +21,18 @@ TEAM_JERSEYS = {
     'Crystal Palace': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_31-66.png',
     'Everton': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_11-66.png',
     'Fulham': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_54-66.png',
-    'Ipswich': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_90-66.png',
-    'Leicester': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_13-66.png',
     'Liverpool': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_14-66.png',
     'Man City': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_43-66.png',
     'Man Utd': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_1-66.png',
     'Newcastle': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_4-66.png',
     'Nott\'m Forest': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_17-66.png',
-    'Southampton': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_20-66.png',
     'Spurs': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_6-66.png',
     'West Ham': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_21-66.png',
-    'Wolves': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_39-66.png'
+    'Wolves': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_39-66.png',
+    # --- UPDATED TEAMS ---
+    'Burnley': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_90-66.png',
+    'Leeds': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_2-66.png',
+    'Sunderland': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_49-66.png'
 }
 
 
@@ -65,7 +64,6 @@ def fetch_live_fpl_data():
 
 def engineer_features(players_df, teams_df, positions_df):
     """Cleans data and prepares it for optimization."""
-    # FPL API uses 'Spurs' for Tottenham Hotspur, so we'll align the team names
     teams_df['name'] = teams_df['name'].replace({'Tottenham': 'Spurs'})
     
     players_df['team_name'] = players_df['team'].map(teams_df.set_index('id')['name'])
@@ -159,13 +157,11 @@ def display_player_card(player_series, container):
             col1, col2 = st.columns([1, 2])
             
             with col1:
-                # --- THIS IS THE UPDATED PART ---
-                # Get the jersey URL from our dictionary
-                jersey_url = TEAM_JERSEYS.get(player_series['team_name'], '')
+                jersey_url = TEAM_JERSEYS.get(player_series['team_name'])
                 if jersey_url:
                     st.image(jersey_url, width=100)
                 else:
-                    st.write(player_series['team_name']) # Fallback if no jersey
+                    st.write(player_series['team_name'])
             
             with col2:
                 st.markdown(f"**{player_series['web_name']}**")
@@ -199,6 +195,25 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             col1.metric("Predicted Points (Full Squad)", f"{total_xp:.2f}")
             col2.metric("Total Squad Cost", f"£{total_cost:.1f}m")
             
+            # --- NEW: Captain & Vice-Captain Picks ---
+            st.markdown("---")
+            st.header("©️ Captaincy Picks")
+            
+            # Sort the entire 15-man squad by predicted points
+            squad_sorted_by_xp = final_squad.sort_values(by='xP', ascending=False)
+            captain = squad_sorted_by_xp.iloc[0]
+            vice_captain = squad_sorted_by_xp.iloc[1]
+            
+            cap_col, vc_col = st.columns(2)
+            with cap_col:
+                st.subheader("Captain (C)")
+                display_player_card(captain, st)
+            
+            with vc_col:
+                st.subheader("Vice-Captain (VC)")
+                display_player_card(vice_captain, st)
+            
+            # --- Display the Dashboard UI ---
             st.markdown("---")
             st.header("⭐ Starting XI")
             
@@ -224,10 +239,10 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             for i, player in enumerate(bench_players_list):
                 display_player_card(player, bench_cols[i])
 
+            # --- Display Chip Strategy ---
             st.markdown("---")
             st.subheader("💡 FPL Chip Strategy Guide")
-            tc_candidate = final_squad.sort_values(by='xP', ascending=False).iloc[0]
-            st.info(f"**This Week's Triple Captain Pick:** {tc_candidate['web_name']} ({tc_candidate['team_name']}) with a predicted score of {tc_candidate['xP']:.2f} points.")
+            st.info(f"**This Week's Triple Captain Pick:** {captain['web_name']} ({captain['team_name']}) with a predicted score of {captain['xP']:.2f} points.")
             
             with st.expander("See General Chip Strategy Advice"):
                 st.markdown("""
