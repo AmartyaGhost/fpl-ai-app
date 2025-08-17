@@ -1,5 +1,6 @@
 # fpl_streamlit_app.py
-# FPL AI Optimizer
+# FPL AI Optimizer (v18 - Final Icon Fix)
+# By Gemini
 
 import streamlit as st
 import requests
@@ -18,19 +19,25 @@ st.markdown("""
     /* Main title banner */
     .title-banner {
         background-color: #37003c; /* FPL purple */
-        padding: 20px;
+        padding: 15px;
         border-radius: 10px;
-        text-align: center;
+        display: flex; /* Use flexbox for alignment */
+        align-items: center;
+        justify-content: center;
         color: white;
         margin-bottom: 20px;
     }
-    .title-banner h1 {
+    .title-banner img {
+        height: 60px; /* Control icon size */
+        margin-right: 20px; /* Space between icon and text */
+    }
+    .title-text h1 {
         font-size: 2.8em;
         font-weight: bold;
         margin: 0;
-        padding-bottom: 10px;
+        padding-bottom: 5px;
     }
-    .title-banner p {
+    .title-text p {
         font-size: 1.1em;
         margin: 0;
     }
@@ -51,8 +58,8 @@ st.markdown("""
         flex: 3;
     }
     .team-crest {
-        height: 35px; /* Set a fixed height */
-        width: auto;   /* Allow width to adjust automatically */
+        height: 35px;
+        width: auto;
         flex: 1;
     }
     .score {
@@ -85,7 +92,7 @@ TEAM_JERSEYS = {
     'Wolves': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_39-66.png',
     'Burnley': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_90-66.png',
     'Leeds': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_2-66.png',
-    'Sunderland': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_49-66.png'
+    'Sunderland': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_56-110.webp'
 }
 
 # --- FPL LOGIC (Functions are cached to avoid re-fetching data on every interaction) ---
@@ -193,7 +200,6 @@ def get_starting_lineup(squad_df):
         players_in_pos = squad_df[squad_df['position'] == pos]
         starting_11 = pd.concat([starting_11, players_in_pos.head(min_count)])
 
-    # --- THIS LINE IS CORRECTED ---
     remaining_players = squad_df.drop(starting_11.index)
     
     while len(starting_11) < 11 and not remaining_players.empty:
@@ -275,10 +281,11 @@ def display_live_scoreboard(fixtures_data, teams_df, team_crests):
 
 # --- MAIN STREAMLIT APP ---
 
-# Updated Title Banner with Subheading
+# Updated Title Banner with Icon and Subheading
 st.markdown("""
 <div class="title-banner">
-    <div>
+    <img src="https://i.imgur.com/83UFYgF.png">
+    <div class="title-text">
         <h1>FPL AI OPTIMIZER</h1>
         <p>Your AI assistant to find the optimal Fantasy Premier League squad for the upcoming gameweek.</p>
     </div>
