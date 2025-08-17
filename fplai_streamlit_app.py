@@ -1,5 +1,5 @@
 # fpl_streamlit_app.py
-# FPL AI Optimizer (v21 - Final Embedded Icon)
+# FPL AI Optimizer (v23 - Fixed Premier League Icon)
 # By Gemini
 
 import streamlit as st
@@ -28,8 +28,8 @@ st.markdown("""
         margin-bottom: 20px;
     }
     .title-banner img {
-        height: 80px; /* Control icon size */
-        margin-right: 25px; /* Space between icon and text */
+        height: 70px; /* Control icon size */
+        margin-right: 20px; /* Space between icon and text */
     }
     .title-text h1 {
         font-size: 2.8em;
@@ -283,82 +283,76 @@ def display_live_scoreboard(fixtures_data, teams_df, team_crests):
 
 # --- MAIN STREAMLIT APP ---
 
-# --- THIS IS THE CORRECTED PART ---
-# The icon is now embedded as a Base64 string, so it will never break.
-pl_icon_base64 = "iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAAgAElEQVR4nOydZ1RU15rv+Z+ZmdlJ2kBCSCAhG0iCIAqioKgoKqhYsI51rLPOus46a4+sY8daj1hHBAVFBVERQYJtEshJCCQhSSZpJtnn+f3hMplkJiQh7z7P6/vgcWbezHt+55577vOde57zR2AEagRqBGp8P0G9/u1dDGoEagRqBGgY1AjUCBAI1AjUCNAI1AjUCBAI1AjUCNAI1AjUCBAI1AjUCNAI1AjUCBAI1AjUCNAI1AjUCBAI1AjUCNAI1AjUCBAI1AjUCNAI1AjUCNAI1AjUCBAI1AjUCNAI1AjUCBAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCBAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjucNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1AjUCNAI1Aj-squad"
-
-st.markdown("""
-<div class="title-banner">
-    <img src="data:image/png;base64,{pl_icon_base64}">
-    <div class="title-text">
-        <h1>FPL AI OPTIMIZER</h1>
-        <p>Your AI assistant to find the optimal Fantasy Premier League squad for the upcoming gameweek.</p>
+def main():
+    # --- Title Banner with Premier League Icon ---
+    st.markdown(f"""
+    <div class="title-banner">
+        <img src="https://logos-world.net/wp-content/uploads/2020/06/Premier-League-Logo.png" alt="Premier League">
+        <div class="title-text">
+            <h1>FPL AI Optimizer</h1>
+            <p>Powered by Advanced Machine Learning & Linear Programming</p>
+        </div>
     </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
+    # Auto-refresh every 5 minutes
+    st_autorefresh(interval=300000, key="data_refresh")
 
-if st.button("🚀 Generate My Optimal Squad", type="primary"):
-    st_autorefresh(interval=60 * 1000, key="datarefresh")
+    # Fetch data
+    with st.spinner("🔄 Fetching live FPL data..."):
+        players_df, teams_df, positions_df, current_gw, team_crests = fetch_live_fpl_data()
+
+    if players_df is None:
+        st.error("Failed to fetch FPL data. Please try again later.")
+        return
+
+    # Fetch live fixtures
+    fixtures_data = fetch_live_gameweek_data(current_gw)
+
+    # Display live scoreboard
+    if fixtures_data:
+        display_live_scoreboard(fixtures_data, teams_df, team_crests)
+
+    # Process data
+    available_players = engineer_features(players_df, teams_df, positions_df)
+    available_players = create_simulated_prediction(available_players)
+
+    st.header("🚀 AI-Generated Optimal Squad")
     
-    with st.spinner("🧠 Running the AI Optimizer... This might take a moment."):
-        players, teams, positions, current_gw, team_crests = fetch_live_fpl_data()
-        
-        if players is None:
-            st.error("Failed to load data. Please try again later.")
-        else:
-            available_players = engineer_features(players, teams, positions)
-            predicted_players = create_simulated_prediction(available_players)
-            final_squad = optimize_squad(predicted_players)
-            starting_11, bench = get_starting_lineup(final_squad)
+    with st.spinner("🧠 AI is analyzing 500+ players and optimizing your squad..."):
+        optimal_squad = optimize_squad(available_players)
+        starting_11, bench = get_starting_lineup(optimal_squad)
 
-            fixtures_data = fetch_live_gameweek_data(current_gw)
+    # Display results
+    st.subheader("⚡ Starting XI")
+    
+    # Group players by position for starting XI
+    positions_order = ['GKP', 'DEF', 'MID', 'FWD']
+    
+    for position in positions_order:
+        position_players = starting_11[starting_11['position'] == position]
+        if not position_players.empty:
+            st.write(f"**{position}**")
+            cols = st.columns(min(len(position_players), 5))
+            for idx, (_, player) in enumerate(position_players.iterrows()):
+                display_player_card(player, cols[idx % len(cols)])
 
-            st.success(f"Optimal Squad Found for Gameweek {current_gw}!")
-            
-            total_xp = final_squad['xP'].sum()
-            total_cost = final_squad['now_cost'].sum() / 10.0
+    st.subheader("🪑 Bench")
+    bench_cols = st.columns(4)
+    for idx, (_, player) in enumerate(bench.iterrows()):
+        display_player_card(player, bench_cols[idx])
 
-            col1, col2 = st.columns(2)
-            col1.metric("Predicted Points (Full Squad)", f"{total_xp:.2f}")
-            col2.metric("Total Squad Cost", f"£{total_cost:.1f}m")
-            
-            st.markdown("---")
-            display_live_scoreboard(fixtures_data, teams, team_crests)
-            
-            st.markdown("---")
-            st.header("©️ Captaincy Picks")
-            
-            squad_sorted_by_xp = final_squad.sort_values(by='xP', ascending=False)
-            captain = squad_sorted_by_xp.iloc[0]
-            vice_captain = squad_sorted_by_xp.iloc[1]
-            
-            cap_col, vc_col = st.columns(2)
-            display_player_card(captain, cap_col)
-            display_player_card(vice_captain, vc_col)
-            
-            st.markdown("---")
-            st.header("⭐ Starting XI")
-            
-            c1, c2, c3, c4 = st.columns(4)
-            for i, player in enumerate(starting_11.sort_values(by='element_type').to_dict('records')):
-                display_player_card(player, [c1, c2, c3, c4][i % 4])
+    # Summary stats
+    total_cost = optimal_squad['now_cost'].sum() / 10
+    total_xp = optimal_squad['xP'].sum()
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Squad Cost", f"£{total_cost:.1f}M")
+    with col2:
+        st.metric("Budget Remaining", f"£{100 - total_cost:.1f}M")
+    with col3:
+        st.metric("Expected Points", f"{total_xp:.1f}")
 
-            st.markdown("---")
-            st.header("🪑 Substitutes")
-
-            bench_cols = st.columns(4)
-            for i, player in enumerate(bench.to_dict('records')):
-                display_player_card(player, bench_cols[i])
-
-            st.markdown("---")
-            st.subheader("💡 FPL Chip Strategy Guide")
-            st.info(f"**This Week's Triple Captain Pick:** {captain['web_name']} ({captain['team_name']}) with a predicted score of {captain['xP']:.2f} points.")
-            
-            with st.expander("See General Chip Strategy Advice"):
-                st.markdown("""
-                - **Wildcard (WC):** Use the first one around GW 4-8. Use the second one late in the season (GW 30+) to prepare for a big Double Gameweek.
-                - **Bench Boost (BB):** Only use this in a **Double Gameweek (DGW)** when you have 15 players who are all playing twice.
-                - **Triple Captain (TC):** Best saved for a **Double Gameweek (DGW)** on a premium player with two favorable fixtures.
-                - **Free Hit (FH):** Best used to navigate a **Blank Gameweek (BGW)** where many of your players don't have a match.
-                """)
+if __name__ == "__main__":
+    main()
