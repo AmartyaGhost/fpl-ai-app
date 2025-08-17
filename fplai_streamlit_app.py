@@ -35,24 +35,32 @@ class FPLDataManager:
         """Gets live data for a specific gameweek."""
         return _self.session.get(f"{_self.base_url}event/{gameweek}/live/").json()
 
+    # [NEW] Helper to get team crests
+    @st.cache_data
+    def get_team_data(_self):
+        """Returns a dataframe of team data, including crests."""
+        bootstrap = _self.get_bootstrap_data()
+        teams_df = pd.DataFrame(bootstrap['teams'])
+        # The FPL API provides a 'code' that maps to their image assets
+        teams_df['crest_url'] = teams_df['code'].apply(
+            lambda code: f"https://resources.premierleague.com/premierleague/badges/70/t{code}.png"
+        )
+        return teams_df[['id', 'name', 'short_name', 'crest_url']]
+
     def get_live_manager_team(self, manager_id, gameweek):
         """Gets a manager's live team and points."""
         live_data = self.get_live_gameweek_data(gameweek)
         
-        # [FIX] Use json_normalize to correctly flatten the nested 'stats' dictionary
         if 'elements' not in live_data or not live_data['elements']:
-            return pd.DataFrame(columns=['Player', 'Points']) # Return empty if no data
+            return pd.DataFrame(columns=['Player', 'Points'])
 
         elements = pd.json_normalize(live_data['elements'])
 
-        # Add player names from bootstrap data
         bootstrap_data = self.get_bootstrap_data()
         player_names = pd.DataFrame(bootstrap_data['elements'])[['id', 'web_name']]
         elements = elements.merge(player_names, on='id', how='left')
         
-        # Now the 'stats.total_points' column exists and this line will work
         top_players = elements.sort_values(by='stats.total_points', ascending=False).head(15)
-        
         return top_players[['web_name', 'stats.total_points']].rename(columns={'web_name': 'Player', 'stats.total_points': 'Points'})
 
 
@@ -192,17 +200,6 @@ def display_visual_squad(squad_df, formation):
         with cols[i]:
             st.markdown(f"<div class='player-card'><img src='{get_shirt_url(player['team_code'])}' width=60><br><span class='player-name'>{player['web_name']}</span><br><span class='player-info'>{player['team_short_name']} | £{player['cost']:.1f}m</span></div>", unsafe_allow_html=True)
 
-
-def get_live_scores():
-    """Mock function for live scores. Replace with a real API call."""
-    matches = [
-        {"home": "Arsenal", "away": "Tottenham", "score": "1-0", "time": "65'", "status": "LIVE"},
-        {"home": "Man City", "away": "Liverpool", "score": "0-0", "time": "HT", "status": "HALF_TIME"},
-        {"home": "Chelsea", "away": "Man Utd", "score": "-", "time": "20:30 IST", "status": "SCHEDULED"},
-        {"home": "Everton", "away": "Fulham", "score": "2-1", "time": "FT", "status": "FINISHED"},
-    ]
-    return matches
-
 # --- STREAMLIT APP PAGES ---
 
 def optimizer_page():
@@ -258,6 +255,7 @@ def live_tracker_page():
     dm = FPLDataManager()
     
     bootstrap = dm.get_bootstrap_data()
+    teams = dm.get_team_data().set_index('short_name') # Get team data for crests
     current_gw = next((gw['id'] for gw in bootstrap['events'] if gw['is_current']), None)
     
     if not current_gw:
@@ -282,17 +280,66 @@ def live_tracker_page():
 
     with col2:
         st.subheader("Live Premier League Scores")
+        
+        # [NEW] CSS for the blinking dot and scoreboard layout
+        st.markdown("""
+            <style>
+                @keyframes blink { 50% { opacity: 0; } }
+                .blinking-dot {
+                    height: 8px;
+                    width: 8px;
+                    background-color: red;
+                    border-radius: 50%;
+                    display: inline-block;
+                    animation: blink 1s linear infinite;
+                    margin-right: 5px;
+                }
+                .match-row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 10px;
+                    border-bottom: 1px solid #333;
+                }
+                .team { display: flex; align-items: center; width: 120px; }
+                .team-name { margin: 0 10px; }
+                .score { font-weight: bold; font-size: 1.2em; }
+                .status { text-align: center; width: 50px; }
+            </style>
+        """, unsafe_allow_html=True)
             
-        live_scores = get_live_scores()
+        # Mock data now includes team short names to look up crests
+        live_scores = [
+            {"home": "CHE", "away": "CRY", "score": "0 - 0", "time": "FT", "status": "FINISHED", "date": "Sun 17 Aug"},
+            {"home": "NFO", "away": "BRE", "score": "3 - 1", "time": "FT", "status": "FINISHED", "date": "Sun 17 Aug"},
+            {"home": "MUN", "away": "ARS", "score": "0 - 1", "time": "73'", "status": "LIVE", "date": "Sun 17 Aug"},
+            {"home": "LEE", "away": "EVE", "score": "00:30", "time": "00:30 IST", "status": "SCHEDULED", "date": "Tue 19 Aug"},
+        ]
+        
+        current_date = ""
         for match in live_scores:
-            status_color = {'LIVE': 'lightgreen', 'SCHEDULED': 'orange', 'HALF_TIME': 'yellow'}.get(match['status'], 'gray')
-            status_icon = {'LIVE': '🟢', 'SCHEDULED': '⏰', 'HALF_TIME': '⏸️', 'FINISHED': '🏁'}.get(match['status'], '')
+            if match['date'] != current_date:
+                st.markdown(f"**{match['date']}**")
+                current_date = match['date']
+
+            home_crest = teams.loc[match['home']]['crest_url']
+            away_crest = teams.loc[match['away']]['crest_url']
+            
+            live_indicator = "<span class='blinking-dot'></span>" if match['status'] == 'LIVE' else ''
             
             st.markdown(f"""
-            <div style="border: 1px solid #333; border-radius: 5px; padding: 10px; margin-bottom: 10px; background-color: #262730;">
-                <span style="color: {status_color};">{status_icon} {match['time']}</span><br>
-                **{match['home']}** vs **{match['away']}** <span style="float: right; font-weight: bold;">{match['score']}</span>
-            </div>
+                <div class="match-row">
+                    <div class="status">{live_indicator}{match['time']}</div>
+                    <div class="team" style="justify-content: flex-end;">
+                        <span class="team-name">{teams.loc[match['home']]['name']}</span>
+                        <img src="{home_crest}" width="25">
+                    </div>
+                    <div class="score">{match['score']}</div>
+                    <div class="team">
+                        <img src="{away_crest}" width="25">
+                        <span class="team-name">{teams.loc[match['away']]['name']}</span>
+                    </div>
+                </div>
             """, unsafe_allow_html=True)
 
 def strategy_guide_page():
