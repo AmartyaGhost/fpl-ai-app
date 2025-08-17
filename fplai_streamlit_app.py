@@ -221,7 +221,7 @@ def display_visual_squad(squad_df, formation):
 
 def optimizer_page():
     st.title("Gameweek Optimizer 🔮")
-    st.markdown("This tool analyzes all FPL players to suggest the optimal 15-player squad based on your budget.")
+    st.markdown("This tool analyzes all FPL players to suggest the optimal 15-player squad for the standard **£100.0m** budget.")
     
     predictor = FPLPredictor()
     optimizer = SquadOptimizer()
@@ -232,12 +232,13 @@ def optimizer_page():
 
     players_df = st.session_state.players_df
     
-    budget = st.sidebar.slider("Set Your Budget (£m)", min_value=80.0, max_value=105.0, value=100.0, step=0.1)
+    # [FIX] Removed the budget slider
     formation_choice = st.sidebar.selectbox("Choose your starting formation", ["3-4-3", "3-5-2", "4-4-2", "4-3-3", "5-3-2"])
     
     if st.sidebar.button("Optimize My Squad", use_container_width=True, type="primary"):
         with st.spinner("Calculating the optimal squad... this might take a minute!"):
-            optimal_squad = optimizer.optimize_squad(players_df, budget=budget)
+            # [FIX] Call optimizer without the budget parameter to use the default £100m
+            optimal_squad = optimizer.optimize_squad(players_df)
             st.session_state.optimal_squad = optimal_squad
         
         st.success("Optimal Squad Found!")
@@ -277,8 +278,7 @@ def live_tracker_page():
     dm = FPLDataManager()
     
     bootstrap = dm.get_bootstrap_data()
-    # [FIX] Set index to 'short_name' for reliable lookup
-    fpl_teams_df = dm.get_team_data().set_index('short_name')
+    teams = dm.get_team_data().set_index('short_name')
     current_gw = next((gw['id'] for gw in bootstrap['events'] if gw['is_current']), None)
     
     if not current_gw:
@@ -331,9 +331,8 @@ def live_tracker_page():
                         st.markdown(f"<h5 style='margin-top: 20px;'>{match_date_str}</h5>", unsafe_allow_html=True)
                         current_date = match_date_str
 
-                    # [FIX] Look up teams by their three-letter name ('tla') instead of mismatched IDs
-                    home_team = fpl_teams_df.loc[match['homeTeam']['tla']]
-                    away_team = fpl_teams_df.loc[match['awayTeam']['tla']]
+                    home_team = teams.loc[match['homeTeam']['tla']]
+                    away_team = teams.loc[match['awayTeam']['tla']]
                     
                     status = match['status']
                     score = match['score']
@@ -346,7 +345,7 @@ def live_tracker_page():
                         time_display = f"{minute}'" if isinstance(minute, int) else "HT"
                         score_display = f"{score['fullTime']['home']} - {score['fullTime']['away']}"
                         live_indicator = "<span class='blinking-dot'></span>"
-                    else: # SCHEDULED or TIMED
+                    else: 
                         time_display, live_indicator = "IST", ""
                         score_display = ist_time.strftime('%H:%M')
 
@@ -365,11 +364,10 @@ def live_tracker_page():
                         </div>
                     """, unsafe_allow_html=True)
                 except KeyError as e:
-                    # This will skip any match where the team name doesn't match, preventing crashes
                     st.warning(f"Could not find team data for a match involving '{e.args[0]}'. Skipping.")
                     continue
         else:
-            st.info("Could not fetch live match data or no matches scheduled for this gameweek.")
+            st.info("Could not fetch live match data. This may be due to no matches being scheduled for this gameweek.")
 
 
 def get_chip_recommendation(squad_df: pd.DataFrame):
