@@ -1,6 +1,5 @@
 # fpl_streamlit_app.py
-# FPL AI Optimizer (v11 - Captaincy Picks)
-# By Gemini
+# FPL AI Optimizer (v12 - Final Fix)
 
 import streamlit as st
 import requests
@@ -29,7 +28,6 @@ TEAM_JERSEYS = {
     'Spurs': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_6-66.png',
     'West Ham': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_21-66.png',
     'Wolves': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_39-66.png',
-    # --- UPDATED TEAMS ---
     'Burnley': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_90-66.png',
     'Leeds': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_2-66.png',
     'Sunderland': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_49-66.png'
@@ -195,11 +193,9 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             col1.metric("Predicted Points (Full Squad)", f"{total_xp:.2f}")
             col2.metric("Total Squad Cost", f"£{total_cost:.1f}m")
             
-            # --- NEW: Captain & Vice-Captain Picks ---
             st.markdown("---")
             st.header("©️ Captaincy Picks")
             
-            # Sort the entire 15-man squad by predicted points
             squad_sorted_by_xp = final_squad.sort_values(by='xP', ascending=False)
             captain = squad_sorted_by_xp.iloc[0]
             vice_captain = squad_sorted_by_xp.iloc[1]
@@ -207,13 +203,14 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             cap_col, vc_col = st.columns(2)
             with cap_col:
                 st.subheader("Captain (C)")
-                display_player_card(captain, st)
+                # --- THIS LINE IS CORRECTED ---
+                display_player_card(captain, cap_col)
             
             with vc_col:
                 st.subheader("Vice-Captain (VC)")
-                display_player_card(vice_captain, st)
+                # --- THIS LINE IS CORRECTED ---
+                display_player_card(vice_captain, vc_col)
             
-            # --- Display the Dashboard UI ---
             st.markdown("---")
             st.header("⭐ Starting XI")
             
@@ -239,7 +236,6 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             for i, player in enumerate(bench_players_list):
                 display_player_card(player, bench_cols[i])
 
-            # --- Display Chip Strategy ---
             st.markdown("---")
             st.subheader("💡 FPL Chip Strategy Guide")
             st.info(f"**This Week's Triple Captain Pick:** {captain['web_name']} ({captain['team_name']}) with a predicted score of {captain['xP']:.2f} points.")
