@@ -30,7 +30,7 @@ class FPLDataManager:
         """Gets all fixture data."""
         return _self.session.get(f"{_self.base_url}fixtures/").json()
 
-    @st.cache_data(ttl=3600)
+    # [FIX] Removed caching from the live data function to allow for real-time updates.
     def get_live_gameweek_data(_self, gameweek):
         """Gets live data for a specific gameweek."""
         return _self.session.get(f"{_self.base_url}event/{gameweek}/live/").json()
@@ -87,9 +87,8 @@ class FPLPredictor:
         players['team_name'] = players['team'].map(teams['name'])
         players['team_short_name'] = players['team'].map(teams['short_name'])
         
-        # Add mock DGW/BGW data for chip strategy logic
-        dgw_teams = ['ARS', 'LIV'] # Mock: Arsenal and Liverpool have a double gameweek
-        bgw_teams = ['AVL', 'WHU'] # Mock: Villa and West Ham have a blank gameweek
+        dgw_teams = ['ARS', 'LIV']
+        bgw_teams = ['AVL', 'WHU']
         players['gameweek_status'] = players['team_short_name'].apply(
             lambda x: 'DGW' if x in dgw_teams else 'BGW' if x in bgw_teams else 'Normal'
         )
@@ -231,7 +230,7 @@ def optimizer_page():
     if st.sidebar.button("Optimize My Squad", use_container_width=True, type="primary"):
         with st.spinner("Calculating the optimal squad... this might take a minute!"):
             optimal_squad = optimizer.optimize_squad(players_df, budget=budget)
-            st.session_state.optimal_squad = optimal_squad # Save to session state
+            st.session_state.optimal_squad = optimal_squad
         
         st.success("Optimal Squad Found!")
 
@@ -262,8 +261,11 @@ def optimizer_page():
                          .sort_values('predicted_points', ascending=False).reset_index(drop=True), height=350)
 
 def live_tracker_page():
+    # [FIX] Add the meta refresh tag to auto-refresh the page every 30 seconds
+    st.markdown('<meta http-equiv="refresh" content="30">', unsafe_allow_html=True)
+    
     st.title("Live Gameweek Tracker 📈")
-    st.markdown("Track live points for players and see live Premier League scores.")
+    st.markdown("Track live points for players and see live Premier League scores. **This page will auto-refresh every 30 seconds.**")
     
     dm = FPLDataManager()
     
@@ -284,9 +286,6 @@ def live_tracker_page():
         st.markdown("This demo shows the top 15 highest-scoring live players.")
         manager_id = st.text_input("Enter your FPL Manager ID (feature in development)", "")
         
-        if st.button("Refresh Live Points"):
-            st.cache_data.clear()
-
         with st.spinner("Fetching live player data..."):
             team_data = dm.get_live_manager_team(manager_id, current_gw)
             st.dataframe(team_data)
@@ -306,7 +305,6 @@ def live_tracker_page():
             </style>
         """, unsafe_allow_html=True)
             
-        # [FIX] Updated mock data to use current PL teams (e.g., replaced 'LEE' with 'WOL')
         live_scores = [
             {"home": "CHE", "away": "CRY", "score": "0 - 0", "time": "FT", "status": "FINISHED", "date": "Sun 17 Aug"},
             {"home": "NFO", "away": "BRE", "score": "3 - 1", "time": "FT", "status": "FINISHED", "date": "Sun 17 Aug"},
@@ -344,21 +342,17 @@ def get_chip_recommendation(squad_df: pd.DataFrame):
     if squad_df is None or squad_df.empty:
         return "Optimize a squad first to get a chip recommendation."
 
-    # Sort squad to find top players and bench
     squad_df = squad_df.sort_values('predicted_points', ascending=False).reset_index()
     top_player = squad_df.iloc[0]
     bench = squad_df.tail(4)
     bench_points = bench['predicted_points'].sum()
 
-    # Heuristic for Triple Captain
     if top_player['gameweek_status'] == 'DGW' and top_player['predicted_points'] > 10:
         return f"**Activate Triple Captain ©️ on {top_player['web_name']}!** He has a Double Gameweek and a very high predicted score ({top_player['predicted_points']:.1f} xP), making him an outstanding candidate."
 
-    # Heuristic for Bench Boost
     if 'DGW' in squad_df['gameweek_status'].unique() and bench_points > 15:
         return f"**Activate Bench Boost ⚡!** You have players with a Double Gameweek and your bench is predicted to score a solid {bench_points:.1f} points. This is a great opportunity to maximize your score."
 
-    # Heuristic for Free Hit
     if len(squad_df[squad_df['gameweek_status'] == 'BGW']) > 4:
          return "**Consider Free Hit 🆓!** A significant number of players in the optimal squad have a Blank Gameweek. Playing the Free Hit would allow you to field a full team of players with fixtures."
     
@@ -368,7 +362,6 @@ def get_chip_recommendation(squad_df: pd.DataFrame):
 def strategy_guide_page():
     st.title("Chip Strategy Guide 🧠")
     
-    # [NEW] Dynamic Chip Recommendation Section
     st.subheader("This Week's Chip Recommendation")
     
     recommendation = "Optimize a squad on the 'Gameweek Optimizer' page first to get a personalized chip recommendation."
@@ -377,7 +370,7 @@ def strategy_guide_page():
 
     st.info(recommendation)
     
-    st.image("https://i.ibb.co/68BFxS8/fpl-chips.png", caption="Your FPL Chips: Wildcard, Free Hit, Bench Boost, Triple Captain")
+    # [FIX] Removed the broken st.image call
     st.markdown("""
     Here is a general guide on when to consider using your chips throughout the season.
     
