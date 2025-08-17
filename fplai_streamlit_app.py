@@ -1,6 +1,5 @@
 # fpl_streamlit_app.py
-# FPL AI Optimizer (v23 - Fixed Premier League Icon)
-# By Gemini
+# FPL AI Optimizer 
 
 import streamlit as st
 import requests
@@ -283,76 +282,89 @@ def display_live_scoreboard(fixtures_data, teams_df, team_crests):
 
 # --- MAIN STREAMLIT APP ---
 
-def main():
-    # --- Title Banner with Premier League Icon ---
-    st.markdown(f"""
-    <div class="title-banner">
-        <img src="https://logos-world.net/wp-content/uploads/2020/06/Premier-League-Logo.png" alt="Premier League">
-        <div class="title-text">
-            <h1>FPL AI Optimizer</h1>
-            <p>Powered by Advanced Machine Learning & Linear Programming</p>
-        </div>
+# Title Banner with Premier League Icon
+st.markdown(f"""
+<div class="title-banner">
+    <img src="https://logos-world.net/wp-content/uploads/2020/06/Premier-League-Logo.png" alt="Premier League Logo">
+    <div class="title-text">
+        <h1>FPL AI Optimizer</h1>
+        <p>AI-Powered Fantasy Premier League Squad Optimization</p>
     </div>
-    """, unsafe_allow_html=True)
+</div>
+""", unsafe_allow_html=True)
 
-    # Auto-refresh every 5 minutes
-    st_autorefresh(interval=300000, key="data_refresh")
+# Auto-refresh every 30 seconds
+st_autorefresh(interval=30000, key="data_refresh")
 
-    # Fetch data
-    with st.spinner("🔄 Fetching live FPL data..."):
-        players_df, teams_df, positions_df, current_gw, team_crests = fetch_live_fpl_data()
+# Fetch data
+with st.spinner("⚽ Loading FPL data..."):
+    players_df, teams_df, positions_df, current_gw, team_crests = fetch_live_fpl_data()
 
-    if players_df is None:
-        st.error("Failed to fetch FPL data. Please try again later.")
-        return
-
-    # Fetch live fixtures
+if players_df is not None:
+    # Get live fixtures
     fixtures_data = fetch_live_gameweek_data(current_gw)
-
+    
     # Display live scoreboard
-    if fixtures_data:
-        display_live_scoreboard(fixtures_data, teams_df, team_crests)
-
+    display_live_scoreboard(fixtures_data, teams_df, team_crests)
+    
+    st.divider()
+    
     # Process data
     available_players = engineer_features(players_df, teams_df, positions_df)
     available_players = create_simulated_prediction(available_players)
-
-    st.header("🚀 AI-Generated Optimal Squad")
     
-    with st.spinner("🧠 AI is analyzing 500+ players and optimizing your squad..."):
+    # Optimize squad
+    with st.spinner("🤖 AI is optimizing your squad..."):
         optimal_squad = optimize_squad(available_players)
         starting_11, bench = get_starting_lineup(optimal_squad)
-
+    
     # Display results
-    st.subheader("⚡ Starting XI")
+    col1, col2 = st.columns(2)
     
-    # Group players by position for starting XI
-    positions_order = ['GKP', 'DEF', 'MID', 'FWD']
-    
-    for position in positions_order:
-        position_players = starting_11[starting_11['position'] == position]
-        if not position_players.empty:
-            st.write(f"**{position}**")
-            cols = st.columns(min(len(position_players), 5))
-            for idx, (_, player) in enumerate(position_players.iterrows()):
-                display_player_card(player, cols[idx % len(cols)])
-
-    st.subheader("🪑 Bench")
-    bench_cols = st.columns(4)
-    for idx, (_, player) in enumerate(bench.iterrows()):
-        display_player_card(player, bench_cols[idx])
-
-    # Summary stats
-    total_cost = optimal_squad['now_cost'].sum() / 10
-    total_xp = optimal_squad['xP'].sum()
-    
-    col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Squad Cost", f"£{total_cost:.1f}M")
-    with col2:
-        st.metric("Budget Remaining", f"£{100 - total_cost:.1f}M")
-    with col3:
+        st.header("⭐ Starting XI")
+        total_cost = starting_11['now_cost'].sum() / 10
+        total_xp = starting_11['xP'].sum()
+        st.metric("Total Cost", f"£{total_cost:.1f}M")
         st.metric("Expected Points", f"{total_xp:.1f}")
+        
+        # Group by position
+        for position in ['GKP', 'DEF', 'MID', 'FWD']:
+            pos_players = starting_11[starting_11['position'] == position]
+            if not pos_players.empty:
+                st.subheader(position)
+                for _, player in pos_players.iterrows():
+                    display_player_card(player, st)
+    
+    with col2:
+        st.header("🪑 Bench")
+        bench_cost = bench['now_cost'].sum() / 10
+        bench_xp = bench['xP'].sum()
+        st.metric("Bench Cost", f"£{bench_cost:.1f}M")
+        st.metric("Bench Expected Points", f"{bench_xp:.1f}")
+        
+        for _, player in bench.iterrows():
+            display_player_card(player, st)
+    
+    # Squad summary
+    st.divider()
+    st.header("📊 Squad Summary")
+    
+    summary_col1, summary_col2, summary_col3, summary_col4 = st.columns(4)
+    
+    total_squad_cost = optimal_squad['now_cost'].sum() / 10
+    total_squad_xp = optimal_squad['xP'].sum()
+    budget_remaining = 100.0 - total_squad_cost
+    
+    with summary_col1:
+        st.metric("Total Squad Cost", f"£{total_squad_cost:.1f}M")
+    with summary_col2:
+        st.metric("Budget Remaining", f"£{budget_remaining:.1f}M")
+    with summary_col3:
+        st.metric("Total Expected Points", f"{total_squad_xp:.1f}")
+    with summary_col4:
+        st.metric("Current Gameweek", f"GW{current_gw}")
 
-if __name__ == "__main__":
-    main()
+else:
+    st.error("Failed to load FPL data. Please try again later.")
+    st.stop()
