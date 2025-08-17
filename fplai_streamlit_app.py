@@ -1,18 +1,19 @@
-# FPL AI Optimizer (v4 - Webhook API Version)
+# fpl_streamlit_app.py
+# FPL AI Optimizer (v5 - Streamlit UI Version)
 # By Gemini
 
 # --- Core Libraries ---
+import streamlit as st
 import requests
 import pandas as pd
-import numpy as np
 import pulp
 
-# --- Flask App Initialization ---
-# This creates the web server application.
-app = Flask(__name__)
+# --- Page Configuration ---
+st.set_page_config(page_title="FPL AI Optimizer", page_icon="⚽", layout="wide")
 
-# --- FPL LOGIC (Functions remain the same) ---
+# --- FPL LOGIC (Functions are cached to avoid re-fetching data on every interaction) ---
 
+@st.cache_data(ttl=3600) # Cache the data for 1 hour
 def fetch_live_fpl_data():
     """Fetches comprehensive player, team, and fixture data from the live FPL API."""
     url = "https://fantasy.premierleague.com/api/bootstrap-static/"
@@ -21,7 +22,7 @@ def fetch_live_fpl_data():
         response.raise_for_status()
         data = response.json()
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching data: {e}")
+        st.error(f"Error fetching data: {e}")
         return None, None, None, None
 
     players_df = pd.DataFrame(data['elements'])
@@ -79,66 +80,61 @@ def optimize_squad(player_df):
     for team_id in player_df['team'].unique():
         prob += pulp.lpSum([player_vars[p.id] for _, p in player_df.iterrows() if p.team == team_id]) <= 3
         
-    prob.solve(pulp.PULP_CBC_CMD(msg=0)) # Suppress console output
+    prob.solve(pulp.PULP_CBC_CMD(msg=0)) 
 
     selected_player_ids = [p.id for _, p in player_df.iterrows() if pulp.value(player_vars[p.id]) == 1]
     
     optimal_squad = player_df[player_df['id'].isin(selected_player_ids)]
     return optimal_squad.sort_values(by='element_type')
 
-# --- NEW: Webhook Endpoint ---
-# This decorator defines the URL for our webhook.
-# Your frontend will send a POST request to 'http://your-server-address/generate-squad'
-@app.route('/generate-squad', methods=['POST'])
-def generate_squad_endpoint():
-    """
-    This function is triggered when the webhook is called.
-    It runs the entire FPL optimization process and returns the result.
-    """
-    print("Webhook received! Running FPL AI Optimizer...")
+# --- STREAMLIT UI LAYOUT ---
+
+st.title("⚽ FPL AI Optimizer")
+st.write("This app uses real-time data to find the optimal Fantasy Premier League squad for the upcoming gameweek.")
+
+if st.button("🚀 Generate My Optimal Squad", type="primary"):
     
-    # 1. Get Live Data
-    players, teams, positions, current_gw = fetch_live_fpl_data()
-    if players is None:
-        return jsonify({"error": "Could not retrieve FPL data."}), 500
+    with st.spinner("🧠 Running the AI Optimizer... This might take a moment."):
+        players, teams, positions, current_gw = fetch_live_fpl_data()
         
-    # 2. Engineer Features
-    available_players = engineer_features(players, teams, positions)
-    
-    # 3. Create a Prediction Score
-    predicted_players = create_simulated_prediction(available_players)
-    
-    # 4. Optimize Squad
-    final_squad = optimize_squad(predicted_players)
-    
-    # 5. Prepare Data for JSON Response
-    total_xp = final_squad['xP'].sum()
-    total_cost = final_squad['now_cost'].sum() / 10.0
-    
-    display_cols = ['web_name', 'position', 'team_name', 'now_cost', 'xP']
-    final_squad['now_cost'] = final_squad['now_cost'] / 10.0
-    final_squad['xP'] = round(final_squad['xP'], 2)
-    
-    # Convert the DataFrame to a list of dictionaries, which is JSON-friendly
-    squad_json = final_squad[display_cols].to_dict(orient='records')
-    
-    # Create the final JSON response object
-    response_data = {
-        "gameweek": current_gw,
-        "predicted_points": round(total_xp, 2),
-        "total_cost": f"£{total_cost:.1f}m",
-        "optimal_squad": squad_json
-    }
-    
-    print("Optimization complete. Sending data back to frontend.")
-    
-    # Send the data back to the frontend
-    return jsonify(response_data)
+        if players is None:
+            st.error("Failed to load data. Please try again later.")
+        else:
+            available_players = engineer_features(players, teams, positions)
+            predicted_players = create_simulated_prediction(available_players)
+            final_squad = optimize_squad(predicted_players)
 
-# --- Server Execution ---
-# This makes the script runnable.
-if __name__ == '__main__':
-    # Runs the Flask server on your local machine.
-    # 'debug=True' allows for auto-reloading when you save changes.
+            st.success(f"Optimal Squad Found for Gameweek {current_gw}!")
+            
+            total_xp = final_squad['xP'].sum()
+            total_cost = final_squad['now_cost'].sum() / 10.0
 
-    app.run(debug=True, port=5001)
+            col1, col2 = st.columns(2)
+            col1.metric("Predicted Points", f"{total_xp:.2f}")
+            col2.metric("Total Squad Cost", f"£{total_cost:.1f}m")
+            
+            display_cols = ['web_name', 'position', 'team_name', 'now_cost', 'xP']
+            final_squad['now_cost'] = final_squad['now_cost'] / 10.0
+            final_squad['xP'] = round(final_squad['xP'], 2)
+            
+            display_df = final_squad[display_cols].rename(columns={
+                'web_name': 'Player',
+                'position': 'Pos',
+                'team_name': 'Team',
+                'now_cost': 'Price (£m)',
+                'xP': 'xP'
+            }).reset_index(drop=True)
+            
+            st.dataframe(display_df, use_container_width=True)
+            
+            st.subheader("💡 FPL Chip Strategy Guide")
+            tc_candidate = final_squad.loc[final_squad['xP'].idxmax()]
+            st.info(f"**This Week's Triple Captain Pick:** {tc_candidate['web_name']} ({tc_candidate['team_name']}) with a predicted score of {tc_candidate['xP']:.2f} points.")
+            
+            with st.expander("See General Chip Strategy Advice"):
+                st.markdown("""
+                - **Wildcard (WC):** Use the first one around GW 4-8 to adapt to early season form. Use the second one late in the season (GW 30+) to prepare for a big Double Gameweek.
+                - **Bench Boost (BB):** Only use this in a **Double Gameweek (DGW)** when you have 15 players who are all playing twice.
+                - **Triple Captain (TC):** Best saved for a **Double Gameweek (DGW)** on a premium player with two favorable fixtures.
+                - **Free Hit (FH):** Best used to navigate a **Blank Gameweek (BGW)** where many of your players don't have a match.
+                """)
