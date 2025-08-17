@@ -1,15 +1,16 @@
 # fpl_streamlit_app.py
-# FPL AI Optimizer (v14 - Enhanced UI & Live Scoreboard)
-# By Gemini
+# FPL AI Optimizer (v15 - Final UI Polish)
 
 import streamlit as st
 import requests
 import pandas as pd
 import pulp
 from streamlit_autorefresh import st_autorefresh
+from datetime import datetime
+import pytz
 
 # --- Page Configuration ---
-st.set_page_config(page_title="FPL AI Optimizer", page_icon="⚽", layout="wide")
+st.set_page_config(page_title="FPL AI Optimizer", page_icon="🦁", layout="wide")
 
 # --- Custom Styling ---
 st.markdown("""
@@ -17,20 +18,22 @@ st.markdown("""
     /* Main title banner */
     .title-banner {
         background-color: #37003c; /* FPL purple */
-        padding: 20px;
+        padding: 15px;
         border-radius: 10px;
-        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         color: white;
         margin-bottom: 20px;
     }
+    .title-banner img {
+        height: 60px;
+        margin-right: 20px;
+    }
     .title-banner h1 {
-        font-size: 3em;
+        font-size: 2.5em;
         font-weight: bold;
         margin: 0;
-    }
-    .title-banner p {
-        font-size: 1.2em;
-        margin-top: 5px;
     }
     /* Scoreboard styling */
     .scoreboard-row {
@@ -49,8 +52,8 @@ st.markdown("""
         flex: 3;
     }
     .team-crest {
-        height: 40px;
-        width: 40px;
+        height: 35px; /* Set a fixed height */
+        width: auto;   /* Allow width to adjust automatically */
         flex: 1;
     }
     .score {
@@ -120,19 +123,13 @@ def fetch_live_gameweek_data(gameweek_id):
     if not gameweek_id:
         return None
     url = f"https://fantasy.premierleague.com/api/fixtures/?event={gameweek_id}"
-    live_url = f"https://fantasy.premierleague.com/api/event/{gameweek_id}/live/"
     try:
         fixtures_response = requests.get(url)
         fixtures_response.raise_for_status()
         fixtures_data = fixtures_response.json()
-        
-        live_response = requests.get(live_url)
-        live_response.raise_for_status()
-        live_data = live_response.json()
-        
-        return fixtures_data, live_data
+        return fixtures_data
     except requests.exceptions.RequestException:
-        return None, None
+        return None
 
 def engineer_features(players_df, teams_df, positions_df):
     """Cleans data and prepares it for optimization."""
@@ -221,7 +218,7 @@ def get_starting_lineup(squad_df):
 
 # --- UI HELPER FUNCTIONS ---
 
-def display_player_card(player_series, container, live_points=None):
+def display_player_card(player_series, container):
     with container:
         with st.container(border=True):
             col1, col2 = st.columns([1, 2])
@@ -236,10 +233,7 @@ def display_player_card(player_series, container, live_points=None):
             with col2:
                 st.markdown(f"**{player_series['web_name']}**")
                 st.markdown(f"<small>{player_series['team_name']} | {player_series['position']}</small>", unsafe_allow_html=True)
-                if live_points is not None:
-                    st.metric(label="Live Points", value=live_points)
-                else:
-                    st.metric(label="Predicted Points (xP)", value=f"{player_series['xP']:.2f}")
+                st.metric(label="Predicted Points (xP)", value=f"{player_series['xP']:.2f}")
 
 def display_live_scoreboard(fixtures_data, teams_df, team_crests):
     st.header("🔴 Live Gameweek Scoreboard")
@@ -249,6 +243,8 @@ def display_live_scoreboard(fixtures_data, teams_df, team_crests):
         return
 
     team_name_map = teams_df.set_index('id')['name'].to_dict()
+    utc_zone = pytz.utc
+    ist_zone = pytz.timezone('Asia/Kolkata')
 
     for fixture in fixtures_data:
         home_team_id = fixture['team_h']
@@ -263,10 +259,10 @@ def display_live_scoreboard(fixtures_data, teams_df, team_crests):
         if fixture['started']:
             score = f"{fixture['team_h_score']} - {fixture['team_a_score']}"
         else:
-            kickoff_time = pd.to_datetime(fixture['kickoff_time']).strftime('%H:%M')
-            score = kickoff_time
+            kickoff_time_utc = datetime.fromisoformat(fixture['kickoff_time'][:-1]).replace(tzinfo=utc_zone)
+            kickoff_time_ist = kickoff_time_utc.astimezone(ist_zone)
+            score = kickoff_time_ist.strftime('%H:%M IST')
 
-        # Using HTML/CSS for a custom layout
         st.markdown(f"""
         <div class="scoreboard-row">
             <div class="team-name" style="text-align: right; padding-right: 10px;">{home_team_name}</div>
@@ -279,16 +275,15 @@ def display_live_scoreboard(fixtures_data, teams_df, team_crests):
 
 # --- MAIN STREAMLIT APP ---
 
-# Beautified Title Banner
+# Beautified Title Banner with Premier League Icon
 st.markdown("""
 <div class="title-banner">
+    <img src="https://i.imgur.com/83UFYgF.png">
     <h1>FPL AI OPTIMIZER</h1>
-    <p>Your AI-Powered Fantasy Football Assistant</p>
 </div>
 """, unsafe_allow_html=True)
 
 if st.button("🚀 Generate My Optimal Squad", type="primary"):
-    # Activate auto-refresh
     st_autorefresh(interval=60 * 1000, key="datarefresh")
     
     with st.spinner("🧠 Running the AI Optimizer... This might take a moment."):
@@ -302,7 +297,7 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             final_squad = optimize_squad(predicted_players)
             starting_11, bench = get_starting_lineup(final_squad)
 
-            fixtures_data, live_data = fetch_live_gameweek_data(current_gw)
+            fixtures_data = fetch_live_gameweek_data(current_gw)
 
             st.success(f"Optimal Squad Found for Gameweek {current_gw}!")
             
@@ -313,11 +308,9 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             col1.metric("Predicted Points (Full Squad)", f"{total_xp:.2f}")
             col2.metric("Total Squad Cost", f"£{total_cost:.1f}m")
             
-            # --- Live Scoreboard Display ---
             st.markdown("---")
             display_live_scoreboard(fixtures_data, teams, team_crests)
             
-            # --- Captaincy Picks ---
             st.markdown("---")
             st.header("©️ Captaincy Picks")
             
@@ -329,7 +322,6 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             display_player_card(captain, cap_col)
             display_player_card(vice_captain, vc_col)
             
-            # --- Squad Display ---
             st.markdown("---")
             st.header("⭐ Starting XI")
             
@@ -344,7 +336,6 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             for i, player in enumerate(bench.to_dict('records')):
                 display_player_card(player, bench_cols[i])
 
-            # --- Chip Strategy ---
             st.markdown("---")
             st.subheader("💡 FPL Chip Strategy Guide")
             st.info(f"**This Week's Triple Captain Pick:** {captain['web_name']} ({captain['team_name']}) with a predicted score of {captain['xP']:.2f} points.")
