@@ -38,15 +38,21 @@ class FPLDataManager:
     def get_live_manager_team(self, manager_id, gameweek):
         """Gets a manager's live team and points."""
         live_data = self.get_live_gameweek_data(gameweek)
-        elements = pd.DataFrame(live_data['elements'])
         
+        # [FIX] Use json_normalize to correctly flatten the nested 'stats' dictionary
+        if 'elements' not in live_data or not live_data['elements']:
+            return pd.DataFrame(columns=['Player', 'Points']) # Return empty if no data
+
+        elements = pd.json_normalize(live_data['elements'])
+
         # Add player names from bootstrap data
         bootstrap_data = self.get_bootstrap_data()
         player_names = pd.DataFrame(bootstrap_data['elements'])[['id', 'web_name']]
-        elements = elements.merge(player_names, left_on='id', right_on='id', how='left')
+        elements = elements.merge(player_names, on='id', how='left')
         
-        # For this demo, we'll show the highest-scoring players of the live gameweek
+        # Now the 'stats.total_points' column exists and this line will work
         top_players = elements.sort_values(by='stats.total_points', ascending=False).head(15)
+        
         return top_players[['web_name', 'stats.total_points']].rename(columns={'web_name': 'Player', 'stats.total_points': 'Points'})
 
 
@@ -268,7 +274,6 @@ def live_tracker_page():
         manager_id = st.text_input("Enter your FPL Manager ID (feature in development)", "")
         
         if st.button("Refresh Live Points"):
-            # Clear cache for live data to force a refetch
             st.cache_data.clear()
 
         with st.spinner("Fetching live player data..."):
@@ -289,10 +294,6 @@ def live_tracker_page():
                 **{match['home']}** vs **{match['away']}** <span style="float: right; font-weight: bold;">{match['score']}</span>
             </div>
             """, unsafe_allow_html=True)
-    
-    # [FIX] Removed the time.sleep() and experimental_rerun() lines
-    # The page will now be responsive and update when the user clicks a button.
-
 
 def strategy_guide_page():
     st.title("Chip Strategy Guide 🧠")
