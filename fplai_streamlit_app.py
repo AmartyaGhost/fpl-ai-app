@@ -1,5 +1,5 @@
 # fpl_streamlit_app.py
-# FPL AI Optimizer (v8 - Final Dashboard UI)
+# FPL AI Optimizer (v9 - Final UI Fix)
 # By Gemini
 
 import streamlit as st
@@ -124,33 +124,21 @@ def get_starting_lineup(squad_df):
 def display_player_card(player_series, container):
     """Displays a single player in a card format within a specified container."""
     
-    # Custom CSS for the card
-    card_style = """
-        border: 1px solid #273746;
-        border-radius: 10px;
-        padding: 10px;
-        text-align: center;
-        background-color: #17202A;
-    """
-    
     with container:
-        st.markdown(f'<div style="{card_style}">', unsafe_allow_html=True)
-        
-        # Player Image
-        player_image_url = f"https://resources.premierleague.com/premierleague/photos/players/110x140/p{player_series['code']}.png"
-        st.image(player_image_url, width=100)
-        
-        # Player Name
-        st.markdown(f"**{player_series['web_name']}**")
-        
-        # Team and Position
-        st.markdown(f"<small>{player_series['team_name']} | {player_series['position']}</small>", unsafe_allow_html=True)
-        
-        # Metric for Predicted Points
-        st.metric(label="Predicted Points (xP)", value=f"{player_series['xP']:.2f}")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-
+        # Use a container with a border for the card effect
+        with st.container(border=True):
+            
+            # Use columns for layout: image on the left, info on the right
+            col1, col2 = st.columns([1, 2])
+            
+            with col1:
+                player_image_url = f"https://resources.premierleague.com/premierleague/photos/players/110x140/p{player_series['code']}.png"
+                st.image(player_image_url, width=100)
+            
+            with col2:
+                st.markdown(f"**{player_series['web_name']}**")
+                st.markdown(f"<small>{player_series['team_name']} | {player_series['position']}</small>", unsafe_allow_html=True)
+                st.metric(label="Predicted Points (xP)", value=f"{player_series['xP']:.2f}")
 
 # --- MAIN STREAMLIT APP ---
 
@@ -183,11 +171,9 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             st.markdown("---")
             st.header("⭐ Starting XI")
             
-            # Create 4 columns for a balanced layout
             c1, c2, c3, c4 = st.columns(4)
             starting_players_list = starting_11.sort_values(by='element_type').to_dict('records')
 
-            # Distribute players into columns
             for i, player in enumerate(starting_players_list):
                 if i % 4 == 0:
                     display_player_card(player, c1)
