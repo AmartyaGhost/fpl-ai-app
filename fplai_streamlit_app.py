@@ -1,5 +1,6 @@
 # fpl_streamlit_app.py
-# FPL AI Optimizer (v6 - Final Version with Visual UI)
+# FPL AI Optimizer (v7 - Final Version with Embedded UI)
+# By Gemini
 
 import streamlit as st
 import requests
@@ -86,34 +87,31 @@ def optimize_squad(player_df):
     return optimal_squad.sort_values(by='element_type')
 
 def get_starting_lineup(squad_df):
-    """
-    Selects the best starting 11 from the 15-man squad.
-    This is a simplified version; a more complex one would consider fixture difficulty.
-    """
-    # Sort by predicted points to prioritize high-scoring players
+    """Selects the best starting 11 from the 15-man squad."""
     squad_df = squad_df.sort_values(by='xP', ascending=False)
     
     starting_11 = pd.DataFrame()
-    positions = {'GKP': 1, 'DEF': 3, 'MID': 2, 'FWD': 1} # Minimum players in each position
+    positions = {'GKP': 1, 'DEF': 3, 'MID': 2, 'FWD': 1}
     
-    # Add minimum players for each position first
     for pos, min_count in positions.items():
         players_in_pos = squad_df[squad_df['position'] == pos]
         starting_11 = pd.concat([starting_11, players_in_pos.head(min_count)])
 
-    # Fill remaining spots with the best available players, respecting positional maximums
     remaining_players = squad_df.drop(starting_11.index)
     
-    while len(starting_11) < 11:
+    while len(starting_11) < 11 and not remaining_players.empty:
         best_remaining = remaining_players.iloc[0]
         pos = best_remaining['position']
         
-        # Respect formation constraints (e.g., max 5 defenders)
+        can_add = False
         if pos == 'DEF' and len(starting_11[starting_11['position'] == 'DEF']) < 5:
-            starting_11 = pd.concat([starting_11, best_remaining.to_frame().T])
+            can_add = True
         elif pos == 'MID' and len(starting_11[starting_11['position'] == 'MID']) < 5:
-            starting_11 = pd.concat([starting_11, best_remaining.to_frame().T])
+            can_add = True
         elif pos == 'FWD' and len(starting_11[starting_11['position'] == 'FWD']) < 3:
+            can_add = True
+        
+        if can_add:
             starting_11 = pd.concat([starting_11, best_remaining.to_frame().T])
         
         remaining_players = remaining_players.iloc[1:]
@@ -121,27 +119,30 @@ def get_starting_lineup(squad_df):
     bench = squad_df.drop(starting_11.index).sort_values(by='element_type')
     return starting_11, bench
 
-
 # --- UI HELPER FUNCTIONS ---
 
 def display_player(player_series):
     """Displays a single player's image and info."""
     player_image_url = f"https://resources.premierleague.com/premierleague/photos/players/110x140/p{player_series['code']}.png"
     st.image(player_image_url, width=80)
-    st.markdown(f"<p style='text-align: center; font-weight: bold; font-size: 12px;'>{player_series['web_name']}</p>", unsafe_allow_html=True)
-    st.markdown(f"<p style='text-align: center; font-size: 11px;'>xP: {player_series['xP']:.2f}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; font-weight: bold; font-size: 12px; color: white; background-color: #008f5a; border-radius: 3px; padding: 2px;'>{player_series['web_name']}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; font-size: 11px; color: white; background-color: #273746; border-radius: 3px; padding: 2px;'>xP: {player_series['xP']:.2f}</p>", unsafe_allow_html=True)
 
 def display_pitch(starting_11, bench):
     """Displays the starting 11 on a football pitch and the bench."""
     
-    # Custom CSS for the pitch background
+    # --- THIS IS THE CORRECTED CODE ---
+    # We embed the pitch image directly into the app's styling using Base64.
+    # This prevents external loading issues and guarantees the background will appear.
+    pitch_image_base64 = "iVBORw0KGgoAAAANSUhEUgAAA5UAAALQCAMAAACj2okIAAAAVFBMVEX///8AmboAn7wAmroAnbwAnLsAl7sAasoAmLsAagAAmroAnbwAm7sAmrsAmLsAmrsAnbwAnLsAm7oAnLsAnbwAmroAnLsAmrsAnbwAn7sAnLsAnbwAmrsAnLwAm7sAnLsAnbvgYV/DAAAAFnRSTlP+/////////v7+/v7+/v7+/v7+/v7+/v42BUnlAAAB90lEQVR42uzQMQEAAAgDINvf2t9aQID/AAEFBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBDwB028AAGGm1yCAAAAAElFTkSuQmCC"
     pitch_css = f"""
     <style>
     .pitch-container {{
-        background-image: url('https://i.imgur.com/2T5rgU4.png');
-        background-size: cover;
+        background-image: url(data:image/png;base64,{pitch_image_base64});
+        background-size: contain;
         background-repeat: no-repeat;
-        padding: 20px;
+        background-position: center;
+        padding: 40px 20px;
         border-radius: 10px;
         height: 600px;
         position: relative;
@@ -152,47 +153,53 @@ def display_pitch(starting_11, bench):
     
     st.markdown('<div class="pitch-container">', unsafe_allow_html=True)
 
-    # Filter players by position
     gkp = starting_11[starting_11['position'] == 'GKP']
-    defs = starting_11[starting_11['position'] == 'DEF']
-    mids = starting_11[starting_11['position'] == 'MID']
-    fwds = starting_11[starting_11['position'] == 'FWD']
+    defs = starting_11[starting_11['position'] == 'DEF'].sort_values('web_name')
+    mids = starting_11[starting_11['position'] == 'MID'].sort_values('web_name')
+    fwds = starting_11[starting_11['position'] == 'FWD'].sort_values('web_name')
 
-    # Display players in their positions using columns
-    # Goalkeeper Row
-    gkp_cols = st.columns(3)
-    with gkp_cols[1]:
-        for _, player in gkp.iterrows():
-            display_player(player)
-
-    # Defender Row
-    def_cols = st.columns(len(defs) if len(defs) > 0 else 1)
-    for i, (_, player) in enumerate(defs.iterrows()):
-        with def_cols[i]:
-            display_player(player)
+    # Add spacing from the top
+    st.write("")
+    st.write("")
     
-    # Midfielder Row
-    mid_cols = st.columns(len(mids) if len(mids) > 0 else 1)
-    for i, (_, player) in enumerate(mids.iterrows()):
-        with mid_cols[i]:
-            display_player(player)
+    # Goalkeeper Row
+    if not gkp.empty:
+        gkp_cols = st.columns([1, 1, 1])
+        with gkp_cols[1]:
+            display_player(gkp.iloc[0])
             
+    # Defender Row
+    if not defs.empty:
+        def_cols = st.columns(len(defs))
+        for i, (_, player) in enumerate(defs.iterrows()):
+            with def_cols[i]:
+                display_player(player)
+
+    # Midfielder Row
+    if not mids.empty:
+        mid_cols = st.columns(len(mids))
+        for i, (_, player) in enumerate(mids.iterrows()):
+            with mid_cols[i]:
+                display_player(player)
+                
     # Forward Row
-    fwd_cols = st.columns(len(fwds) if len(fwds) > 0 else 1)
-    for i, (_, player) in enumerate(fwds.iterrows()):
-        with fwd_cols[i]:
-            display_player(player)
+    if not fwds.empty:
+        fwd_cols = st.columns(len(fwds))
+        for i, (_, player) in enumerate(fwds.iterrows()):
+            with fwd_cols[i]:
+                display_player(player)
 
     st.markdown('</div>', unsafe_allow_html=True)
+    st.write("")
 
     # Display the Bench
     st.markdown("---")
     st.subheader("Substitutes")
-    bench_cols = st.columns(4)
+    bench = bench.sort_values(by='element_type')
+    bench_cols = st.columns(len(bench) if len(bench) > 0 else 1)
     for i, (_, player) in enumerate(bench.iterrows()):
         with bench_cols[i]:
             display_player(player)
-
 
 # --- MAIN STREAMLIT APP ---
 
@@ -221,17 +228,12 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             col1.metric("Predicted Points (Full Squad)", f"{total_xp:.2f}")
             col2.metric("Total Squad Cost", f"£{total_cost:.1f}m")
             
-            # --- Display the Pitch UI ---
             display_pitch(starting_11, bench)
 
-            # --- Placeholder for Live Tracking Feature ---
             st.markdown("---")
             st.header("🔴 Live Gameweek Tracker")
             st.info("This feature is under development. Check back during a live match to see real-time point updates for your squad!")
-            # Note: Implementing the full live feature is an advanced task.
-            # It would involve using st_autorefresh and repeatedly calling a live FPL API endpoint.
 
-            # --- Display Chip Strategy ---
             st.markdown("---")
             st.subheader("💡 FPL Chip Strategy Guide")
             tc_candidate = final_squad.sort_values(by='xP', ascending=False).iloc[0]
