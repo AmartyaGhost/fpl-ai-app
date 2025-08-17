@@ -4,7 +4,7 @@ import numpy as np
 import requests
 import time
 import pulp
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -35,13 +35,11 @@ class FPLDataManager:
         """Gets live data for a specific gameweek."""
         return _self.session.get(f"{_self.base_url}event/{gameweek}/live/").json()
 
-    # [NEW] Helper to get team crests
     @st.cache_data
     def get_team_data(_self):
         """Returns a dataframe of team data, including crests."""
         bootstrap = _self.get_bootstrap_data()
         teams_df = pd.DataFrame(bootstrap['teams'])
-        # The FPL API provides a 'code' that maps to their image assets
         teams_df['crest_url'] = teams_df['code'].apply(
             lambda code: f"https://resources.premierleague.com/premierleague/badges/70/t{code}.png"
         )
@@ -68,9 +66,10 @@ class FPLPredictor:
     def __init__(self):
         self.dm = FPLDataManager()
 
-    def generate_predictions(self):
+    @st.cache_data
+    def generate_predictions(_self):
         """Creates a DataFrame of all players with features and predicted points."""
-        bootstrap_data = self.dm.get_bootstrap_data()
+        bootstrap_data = _self.dm.get_bootstrap_data()
         players = pd.DataFrame(bootstrap_data['elements'])
         teams_df = pd.DataFrame(bootstrap_data['teams'])
         teams = teams_df.set_index('id')
@@ -88,7 +87,14 @@ class FPLPredictor:
         players['team_name'] = players['team'].map(teams['name'])
         players['team_short_name'] = players['team'].map(teams['short_name'])
         
-        return players[['id', 'web_name', 'team', 'position', 'cost', 'predicted_points', 'team_name', 'team_short_name', 'team_code']]
+        # Add mock DGW/BGW data for chip strategy logic
+        dgw_teams = ['ARS', 'LIV'] # Mock: Arsenal and Liverpool have a double gameweek
+        bgw_teams = ['AVL', 'WHU'] # Mock: Villa and West Ham have a blank gameweek
+        players['gameweek_status'] = players['team_short_name'].apply(
+            lambda x: 'DGW' if x in dgw_teams else 'BGW' if x in bgw_teams else 'Normal'
+        )
+        
+        return players
 
 
 class SquadOptimizer:
@@ -97,7 +103,8 @@ class SquadOptimizer:
         self.squad_size = 15
         self.max_players_per_team = 3
 
-    def optimize_squad(self, players_df: pd.DataFrame, budget: float = 100.0):
+    @st.cache_data
+    def optimize_squad(_self, players_df: pd.DataFrame, budget: float = 100.0):
         """Uses PuLP to find the optimal 15-player squad."""
         prob = pulp.LpProblem("FPL_Squad_Selection", pulp.LpMaximize)
         player_vars = {idx: pulp.LpVariable(f"player_{idx}", cat='Binary') 
@@ -106,13 +113,13 @@ class SquadOptimizer:
         prob += pulp.lpSum(players_df.loc[idx, 'predicted_points'] * player_vars[idx] for idx in players_df.index)
         
         prob += pulp.lpSum(players_df.loc[idx, 'cost'] * player_vars[idx] for idx in players_df.index) <= budget
-        prob += pulp.lpSum(player_vars.values()) == self.squad_size
+        prob += pulp.lpSum(player_vars.values()) == _self.squad_size
         
-        for position, count in self.position_counts.items():
+        for position, count in _self.position_counts.items():
             prob += pulp.lpSum(player_vars[idx] for idx in players_df.index if players_df.loc[idx, 'position'] == position) == count
 
         for team_id in players_df['team'].unique():
-            prob += pulp.lpSum(player_vars[idx] for idx in players_df.index if players_df.loc[idx, 'team'] == team_id) <= self.max_players_per_team
+            prob += pulp.lpSum(player_vars[idx] for idx in players_df.index if players_df.loc[idx, 'team'] == team_id) <= _self.max_players_per_team
 
         prob.solve(pulp.PULP_CBC_CMD(msg=0))
         
@@ -167,31 +174,34 @@ def display_visual_squad(squad_df, formation):
     with st.container():
         st.markdown("<div class='pitch'>", unsafe_allow_html=True)
         # Forwards
-        cols = st.columns(formation[3])
-        for i, (_, player) in enumerate(starters[starters['position'] == 'FWD'].iterrows()):
-             with cols[i]:
-                st.markdown(f"<div class='player-card'><img src='{get_shirt_url(player['team_code'])}' width=70><br><span class='player-name'>{player['web_name']}</span><br><span class='player-info'>{player['team_short_name']} | £{player['cost']:.1f}m</span></div>", unsafe_allow_html=True)
+        if formation[3] > 0:
+            cols = st.columns(formation[3])
+            for i, (_, player) in enumerate(starters[starters['position'] == 'FWD'].iterrows()):
+                 with cols[i]:
+                    st.markdown(f"<div class='player-card'><img src='{get_shirt_url(player['team_code'])}' width=70><br><span class='player-name'>{player['web_name']}</span><br><span class='player-info'>{player['team_short_name']} | £{player['cost']:.1f}m</span></div>", unsafe_allow_html=True)
 
         # Midfielders
-        cols = st.columns(formation[2])
-        for i, (_, player) in enumerate(starters[starters['position'] == 'MID'].iterrows()):
-            with cols[i]:
-                st.markdown(f"<div class='player-card'><img src='{get_shirt_url(player['team_code'])}' width=70><br><span class='player-name'>{player['web_name']}</span><br><span class='player-info'>{player['team_short_name']} | £{player['cost']:.1f}m</span></div>", unsafe_allow_html=True)
+        if formation[2] > 0:
+            cols = st.columns(formation[2])
+            for i, (_, player) in enumerate(starters[starters['position'] == 'MID'].iterrows()):
+                with cols[i]:
+                    st.markdown(f"<div class='player-card'><img src='{get_shirt_url(player['team_code'])}' width=70><br><span class='player-name'>{player['web_name']}</span><br><span class='player-info'>{player['team_short_name']} | £{player['cost']:.1f}m</span></div>", unsafe_allow_html=True)
         
         # Defenders
-        cols = st.columns(formation[1])
-        for i, (_, player) in enumerate(starters[starters['position'] == 'DEF'].iterrows()):
-            with cols[i]:
-                st.markdown(f"<div class='player-card'><img src='{get_shirt_url(player['team_code'])}' width=70><br><span class='player-name'>{player['web_name']}</span><br><span class='player-info'>{player['team_short_name']} | £{player['cost']:.1f}m</span></div>", unsafe_allow_html=True)
+        if formation[1] > 0:
+            cols = st.columns(formation[1])
+            for i, (_, player) in enumerate(starters[starters['position'] == 'DEF'].iterrows()):
+                with cols[i]:
+                    st.markdown(f"<div class='player-card'><img src='{get_shirt_url(player['team_code'])}' width=70><br><span class='player-name'>{player['web_name']}</span><br><span class='player-info'>{player['team_short_name']} | £{player['cost']:.1f}m</span></div>", unsafe_allow_html=True)
         
         # Goalkeepers
-        cols = st.columns(formation[0])
-        for i, (_, player) in enumerate(starters[starters['position'] == 'GK'].iterrows()):
-            with cols[i]:
-                st.markdown(f"<div class='player-card'><img src='{get_shirt_url(player['team_code'])}' width=70><br><span class='player-name'>{player['web_name']}</span><br><span class='player-info'>{player['team_short_name']} | £{player['cost']:.1f}m</span></div>", unsafe_allow_html=True)
+        if formation[0] > 0:
+            cols = st.columns(formation[0])
+            for i, (_, player) in enumerate(starters[starters['position'] == 'GK'].iterrows()):
+                with cols[i]:
+                    st.markdown(f"<div class='player-card'><img src='{get_shirt_url(player['team_code'])}' width=70><br><span class='player-name'>{player['web_name']}</span><br><span class='player-info'>{player['team_short_name']} | £{player['cost']:.1f}m</span></div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Display Bench
     st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown("<h4 style='text-align: center;'>Substitutes</h4>", unsafe_allow_html=True)
     cols = st.columns(4)
@@ -209,25 +219,28 @@ def optimizer_page():
     predictor = FPLPredictor()
     optimizer = SquadOptimizer()
 
-    with st.spinner("Fetching player data and generating predictions..."):
-        players_df = predictor.generate_predictions()
+    if 'players_df' not in st.session_state:
+        with st.spinner("Fetching player data and generating predictions..."):
+            st.session_state.players_df = predictor.generate_predictions()
 
+    players_df = st.session_state.players_df
+    
     budget = st.sidebar.slider("Set Your Budget (£m)", min_value=80.0, max_value=105.0, value=100.0, step=0.1)
-    formation_choice = st.sidebar.selectbox("Choose your formation", ["3-4-3", "3-5-2", "4-4-2", "4-3-3", "5-3-2"])
+    formation_choice = st.sidebar.selectbox("Choose your starting formation", ["3-4-3", "3-5-2", "4-4-2", "4-3-3", "5-3-2"])
     
     if st.sidebar.button("Optimize My Squad", use_container_width=True, type="primary"):
         with st.spinner("Calculating the optimal squad... this might take a minute!"):
             optimal_squad = optimizer.optimize_squad(players_df, budget=budget)
+            st.session_state.optimal_squad = optimal_squad # Save to session state
         
         st.success("Optimal Squad Found!")
-        
+
+    if 'optimal_squad' in st.session_state:
+        optimal_squad = st.session_state.optimal_squad
         col1, col2 = st.columns([2, 1])
-        
         with col1:
-            formation_map = {
-                "3-4-3": [1, 3, 4, 3], "3-5-2": [1, 3, 5, 2], "4-4-2": [1, 4, 4, 2],
-                "4-3-3": [1, 4, 3, 3], "5-3-2": [1, 5, 3, 2]
-            }
+            formation_map = {"3-4-3": [1, 3, 4, 3], "3-5-2": [1, 3, 5, 2], "4-4-2": [1, 4, 4, 2],
+                             "4-3-3": [1, 4, 3, 3], "5-3-2": [1, 5, 3, 2]}
             display_visual_squad(optimal_squad, formation_map[formation_choice])
         
         with col2:
@@ -255,7 +268,7 @@ def live_tracker_page():
     dm = FPLDataManager()
     
     bootstrap = dm.get_bootstrap_data()
-    teams = dm.get_team_data().set_index('short_name') # Get team data for crests
+    teams = dm.get_team_data().set_index('short_name')
     current_gw = next((gw['id'] for gw in bootstrap['events'] if gw['is_current']), None)
     
     if not current_gw:
@@ -281,26 +294,11 @@ def live_tracker_page():
     with col2:
         st.subheader("Live Premier League Scores")
         
-        # [NEW] CSS for the blinking dot and scoreboard layout
         st.markdown("""
             <style>
                 @keyframes blink { 50% { opacity: 0; } }
-                .blinking-dot {
-                    height: 8px;
-                    width: 8px;
-                    background-color: red;
-                    border-radius: 50%;
-                    display: inline-block;
-                    animation: blink 1s linear infinite;
-                    margin-right: 5px;
-                }
-                .match-row {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    padding: 10px;
-                    border-bottom: 1px solid #333;
-                }
+                .blinking-dot { height: 8px; width: 8px; background-color: red; border-radius: 50%; display: inline-block; animation: blink 1s linear infinite; margin-right: 5px; }
+                .match-row { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #333; }
                 .team { display: flex; align-items: center; width: 120px; }
                 .team-name { margin: 0 10px; }
                 .score { font-weight: bold; font-size: 1.2em; }
@@ -308,12 +306,12 @@ def live_tracker_page():
             </style>
         """, unsafe_allow_html=True)
             
-        # Mock data now includes team short names to look up crests
+        # [FIX] Updated mock data to use current PL teams (e.g., replaced 'LEE' with 'WOL')
         live_scores = [
             {"home": "CHE", "away": "CRY", "score": "0 - 0", "time": "FT", "status": "FINISHED", "date": "Sun 17 Aug"},
             {"home": "NFO", "away": "BRE", "score": "3 - 1", "time": "FT", "status": "FINISHED", "date": "Sun 17 Aug"},
             {"home": "MUN", "away": "ARS", "score": "0 - 1", "time": "73'", "status": "LIVE", "date": "Sun 17 Aug"},
-            {"home": "LEE", "away": "EVE", "score": "00:30", "time": "00:30 IST", "status": "SCHEDULED", "date": "Tue 19 Aug"},
+            {"home": "WOL", "away": "EVE", "score": "00:30", "time": "00:30 IST", "status": "SCHEDULED", "date": "Tue 19 Aug"},
         ]
         
         current_date = ""
@@ -324,7 +322,6 @@ def live_tracker_page():
 
             home_crest = teams.loc[match['home']]['crest_url']
             away_crest = teams.loc[match['away']]['crest_url']
-            
             live_indicator = "<span class='blinking-dot'></span>" if match['status'] == 'LIVE' else ''
             
             st.markdown(f"""
@@ -342,37 +339,73 @@ def live_tracker_page():
                 </div>
             """, unsafe_allow_html=True)
 
+def get_chip_recommendation(squad_df: pd.DataFrame):
+    """Generates a chip recommendation for the current gameweek."""
+    if squad_df is None or squad_df.empty:
+        return "Optimize a squad first to get a chip recommendation."
+
+    # Sort squad to find top players and bench
+    squad_df = squad_df.sort_values('predicted_points', ascending=False).reset_index()
+    top_player = squad_df.iloc[0]
+    bench = squad_df.tail(4)
+    bench_points = bench['predicted_points'].sum()
+
+    # Heuristic for Triple Captain
+    if top_player['gameweek_status'] == 'DGW' and top_player['predicted_points'] > 10:
+        return f"**Activate Triple Captain ©️ on {top_player['web_name']}!** He has a Double Gameweek and a very high predicted score ({top_player['predicted_points']:.1f} xP), making him an outstanding candidate."
+
+    # Heuristic for Bench Boost
+    if 'DGW' in squad_df['gameweek_status'].unique() and bench_points > 15:
+        return f"**Activate Bench Boost ⚡!** You have players with a Double Gameweek and your bench is predicted to score a solid {bench_points:.1f} points. This is a great opportunity to maximize your score."
+
+    # Heuristic for Free Hit
+    if len(squad_df[squad_df['gameweek_status'] == 'BGW']) > 4:
+         return "**Consider Free Hit 🆓!** A significant number of players in the optimal squad have a Blank Gameweek. Playing the Free Hit would allow you to field a full team of players with fixtures."
+    
+    return "**Save your chips this week.** There isn't a standout opportunity for a chip. The best strategy is to hold them for a future Double or Blank Gameweek."
+
+
 def strategy_guide_page():
     st.title("Chip Strategy Guide 🧠")
+    
+    # [NEW] Dynamic Chip Recommendation Section
+    st.subheader("This Week's Chip Recommendation")
+    
+    recommendation = "Optimize a squad on the 'Gameweek Optimizer' page first to get a personalized chip recommendation."
+    if 'optimal_squad' in st.session_state:
+        recommendation = get_chip_recommendation(st.session_state.optimal_squad)
+
+    st.info(recommendation)
+    
     st.image("https://i.ibb.co/68BFxS8/fpl-chips.png", caption="Your FPL Chips: Wildcard, Free Hit, Bench Boost, Triple Captain")
     st.markdown("""
-    Using your chips at the right time can be the difference between a good season and a great one. Here’s a guide on when to consider using them.
+    Here is a general guide on when to consider using your chips throughout the season.
     
     ---
     ### Wildcard (WC) 🃏
     You get two of these. Use them to completely overhaul your team.
-    - **First Wildcard (Use before GW20):** The best time is typically between **Gameweeks 4 and 8**. By then, you'll have enough data to see which players and teams are over/under-performing. Don't be afraid to use it early to fix mistakes and jump on bandwagons.
+    - **First Wildcard (Use before GW20):** The best time is typically between **Gameweeks 4 and 8**. By then, you'll have enough data to see which players and teams are over/under-performing.
     - **Second Wildcard (Use after GW20):** This is best saved for navigating the big "Double Gameweeks" (DGWs) and "Blank Gameweeks" (BGWs) later in the season, usually around **GW28-GW36**.
     
     ---
     ### Bench Boost (BB) ⚡
     All 15 of your players score points for one week.
-    - **When to use:** Only use this during a **Double Gameweek (DGW)**. The ideal time is when you can use your Wildcard the week before to build a squad of 15 players who all have two matches. This maximizes your point potential. Aim for a DGW between **GW34-GW37**.
+    - **When to use:** Only use this during a **Double Gameweek (DGW)**. The ideal time is when you can use your Wildcard the week before to build a squad of 15 players who all have two matches.
     
     ---
     ### Triple Captain (TC) ©️
     Your captain's points are tripled instead of doubled.
-    - **When to use:** Use this on a star player during a **Double Gameweek (DGW)**. A top-tier attacker (like Haaland or Salah) with two favorable fixtures is the perfect candidate. This gives them two chances to get a massive haul. Look for opportunities in DGWs around **GW25** or **GW34-37**.
+    - **When to use:** Use this on a star player during a **Double Gameweek (DGW)**. A top-tier attacker with two favorable fixtures is the perfect candidate.
     
     ---
     ### Free Hit (FH) 🆓
     Lets you make unlimited transfers for a single gameweek before your squad reverts back.
-    - **When to use:** The best time is during a **Blank Gameweek (BGW)** where many teams don't have a match, and your original squad is decimated. The Free Hit allows you to field a full 11 players from the few teams that *are* playing. The biggest BGWs usually happen around **GW29** due to FA Cup clashes.
+    - **When to use:** The best time is during a **Blank Gameweek (BGW)** where many teams don't have a match, and your original squad is decimated.
     """)
 
 # --- Main App Navigation ---
 st.sidebar.title("FPL AI Navigator")
-page = st.sidebar.radio("Go to", ["Gameweek Optimizer", "Live Tracker", "Chip Strategy Guide"])
+page = st.sidebar.radio("Go to", ["Gameweek Optimizer", "Chip Strategy Guide", "Live Tracker"])
 
 if page == "Gameweek Optimizer":
     optimizer_page()
