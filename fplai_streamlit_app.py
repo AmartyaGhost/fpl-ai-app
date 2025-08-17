@@ -30,7 +30,7 @@ TEAM_JERSEYS = {
     'Wolves': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_39-66.png',
     'Burnley': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_90-66.png',
     'Leeds': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_2-66.png',
-    'Sunderland': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_49-66.png'
+    'Sunderland': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_56-110.webp'
 }
 
 
@@ -247,3 +247,4 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
                 - **Triple Captain (TC):** Best saved for a **Double Gameweek (DGW)** on a premium player with two favorable fixtures.
                 - **Free Hit (FH):** Best used to navigate a **Blank Gameweek (BGW)** where many of your players don't have a match.
                 """)
+
