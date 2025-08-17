@@ -27,18 +27,20 @@ st.markdown("""
         margin-bottom: 20px;
     }
     .title-banner img {
-        height: 60px; /* Control icon size */
-        margin-right: 20px; /* Space between icon and text */
+        height: 80px; /* Increased icon size */
+        margin-right: 25px; /* Space between icon and text */
     }
     .title-text h1 {
         font-size: 2.8em;
         font-weight: bold;
         margin: 0;
         padding-bottom: 5px;
+        text-align: left;
     }
     .title-text p {
         font-size: 1.1em;
         margin: 0;
+        text-align: left;
     }
     /* Scoreboard styling */
     .scoreboard-row {
@@ -91,6 +93,7 @@ TEAM_JERSEYS = {
     'Wolves': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_39-66.png',
     'Burnley': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_90-66.png',
     'Leeds': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_2-66.png',
+    # --- UPDATED SUNDERLAND URL ---
     'Sunderland': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_56-110.webp'
 }
 
@@ -280,10 +283,10 @@ def display_live_scoreboard(fixtures_data, teams_df, team_crests):
 
 # --- MAIN STREAMLIT APP ---
 
-# Updated Title Banner with a new, working icon URL
+# Updated Title Banner with a new, white icon
 st.markdown("""
 <div class="title-banner">
-    <img src="https://logotyp.us/files/premier-league.svg">
+    <img src="https://logodownload.org/wp-content/uploads/2016/03/premier-league-logo-escudo-1.png">
     <div class="title-text">
         <h1>FPL AI OPTIMIZER</h1>
         <p>Your AI assistant to find the optimal Fantasy Premier League squad for the upcoming gameweek.</p>
