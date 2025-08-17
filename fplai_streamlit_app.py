@@ -1,6 +1,5 @@
 # fpl_streamlit_app.py
-# FPL AI Optimizer (v18 - Final Icon Fix)
-# By Gemini
+# FPL AI Optimizer
 
 import streamlit as st
 import requests
@@ -281,10 +280,10 @@ def display_live_scoreboard(fixtures_data, teams_df, team_crests):
 
 # --- MAIN STREAMLIT APP ---
 
-# Updated Title Banner with Icon and Subheading
+# Updated Title Banner with a new, working icon URL
 st.markdown("""
 <div class="title-banner">
-    <img src="https://i.imgur.com/83UFYgF.png">
+    <img src="https://logotyp.us/files/premier-league.svg">
     <div class="title-text">
         <h1>FPL AI OPTIMIZER</h1>
         <p>Your AI assistant to find the optimal Fantasy Premier League squad for the upcoming gameweek.</p>
