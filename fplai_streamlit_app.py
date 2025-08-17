@@ -1,5 +1,5 @@
 # fpl_streamlit_app.py
-# FPL AI Optimizer (v8 - Final Version with UI Fix)
+# FPL AI Optimizer (v8 - Final Dashboard UI)
 # By Gemini
 
 import streamlit as st
@@ -121,101 +121,40 @@ def get_starting_lineup(squad_df):
 
 # --- UI HELPER FUNCTIONS ---
 
-def display_player(player_series):
-    """Displays a single player's image and info."""
-    player_image_url = f"https://resources.premierleague.com/premierleague/photos/players/110x140/p{player_series['code']}.png"
-    st.image(player_image_url, width=70)
-    st.markdown(f"<p style='text-align: center; font-weight: bold; font-size: 12px; color: black; background-color: #fafafa; border-radius: 3px; padding: 2px 0px;'>{player_series['web_name']}</p>", unsafe_allow_html=True)
-    st.markdown(f"<p style='text-align: center; font-size: 11px; color: white; background-color: #000000; border-radius: 3px; padding: 2px 0px;'>xP: {player_series['xP']:.2f}</p>", unsafe_allow_html=True)
-
-def display_pitch(starting_11, bench):
-    """Displays the starting 11 on a football pitch and the bench."""
+def display_player_card(player_series, container):
+    """Displays a single player in a card format within a specified container."""
     
-    # --- THIS IS THE CORRECTED CODE ---
-    # This CSS forces a white background and embeds the pitch image, making it theme-proof.
-    pitch_image_base64 = "iVBORw0KGgoAAAANSUhEUgAAA5UAAALQCAMAAACj2okIAAAAVFBMVEX///8AmboAn7wAmroAnbwAnLsAl7sAasoAmLsAagAAmroAnbwAm7sAmrsAmLsAmrsAnbwAnLsAm7oAnLsAnbwAmroAnLsAmrsAnbwAn7sAnLsAnbwAmrsAnLwAm7sAnLsAnbvgYV/DAAAAFnRSTlP+/////////v7+/v7+/v7+/v7+/v7+/v42BUnlAAAB90lEQVR42uzQMQEAAAgDINvf2t9aQID/AAEFBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBDwB028AAGGm1yCAAAAAElFTkSuQmCC"
-    pitch_css = f"""
-    <style>
-    .pitch-wrapper {{
-        background-color: white;
-        padding: 10px;
+    # Custom CSS for the card
+    card_style = """
+        border: 1px solid #273746;
         border-radius: 10px;
-    }}
-    .pitch-container {{
-        background-image: url(data:image/png;base64,{pitch_image_base64});
-        background-size: contain;
-        background-repeat: no-repeat;
-        background-position: center;
-        padding: 20px;
-        height: 550px; /* Adjusted height */
-    }}
-    </style>
+        padding: 10px;
+        text-align: center;
+        background-color: #17202A;
     """
-    st.markdown(pitch_css, unsafe_allow_html=True)
     
-    st.markdown('<div class="pitch-wrapper">', unsafe_allow_html=True)
-    st.markdown('<div class="pitch-container">', unsafe_allow_html=True)
+    with container:
+        st.markdown(f'<div style="{card_style}">', unsafe_allow_html=True)
+        
+        # Player Image
+        player_image_url = f"https://resources.premierleague.com/premierleague/photos/players/110x140/p{player_series['code']}.png"
+        st.image(player_image_url, width=100)
+        
+        # Player Name
+        st.markdown(f"**{player_series['web_name']}**")
+        
+        # Team and Position
+        st.markdown(f"<small>{player_series['team_name']} | {player_series['position']}</small>", unsafe_allow_html=True)
+        
+        # Metric for Predicted Points
+        st.metric(label="Predicted Points (xP)", value=f"{player_series['xP']:.2f}")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    gkp = starting_11[starting_11['position'] == 'GKP']
-    defs = starting_11[starting_11['position'] == 'DEF'].sort_values('web_name')
-    mids = starting_11[starting_11['position'] == 'MID'].sort_values('web_name')
-    fwds = starting_11[starting_11['position'] == 'FWD'].sort_values('web_name')
-    
-    # --- ROW-BASED LAYOUT FOR BETTER ALIGNMENT ---
-    # Each 'row' is a horizontal container for a line of players
-    
-    # Goalkeeper Row
-    if not gkp.empty:
-        gkp_row = st.columns([1, 1, 1]) # Center the goalkeeper
-        with gkp_row[1]:
-            display_player(gkp.iloc[0])
-    
-    st.write("") # Add spacing
-    
-    # Defender Row
-    if not defs.empty:
-        def_cols = st.columns(len(defs))
-        for i, (_, player) in enumerate(defs.iterrows()):
-            with def_cols[i]:
-                display_player(player)
-
-    st.write("") # Add spacing
-
-    # Midfielder Row
-    if not mids.empty:
-        mid_cols = st.columns(len(mids))
-        for i, (_, player) in enumerate(mids.iterrows()):
-            with mid_cols[i]:
-                display_player(player)
-    
-    st.write("") # Add spacing
-                
-    # Forward Row
-    if not fwds.empty:
-        max_fwds = 3 # FPL max forwards
-        # Create empty columns on either side to center the players
-        padding_left = (max_fwds - len(fwds)) / 2
-        padding_right = (max_fwds - len(fwds)) / 2
-        fwd_cols = st.columns([padding_left] + [1]*len(fwds) + [padding_right])
-        for i, (_, player) in enumerate(fwds.iterrows()):
-            with fwd_cols[i+1]: # Add 1 to index to account for left padding column
-                display_player(player)
-
-    st.markdown('</div></div>', unsafe_allow_html=True) # Close both containers
-    st.write("")
-
-    # Display the Bench
-    st.markdown("---")
-    st.subheader("Substitutes")
-    bench = bench.sort_values(by='element_type')
-    bench_cols = st.columns(len(bench) if len(bench) > 0 else 1)
-    for i, (_, player) in enumerate(bench.iterrows()):
-        with bench_cols[i]:
-            display_player(player)
 
 # --- MAIN STREAMLIT APP ---
 
-st.title("⚽ FPL AI Optimizer")
+st.title("⚽ FPL AI Optimizer Dashboard")
 st.write("This app uses real-time data to find the optimal Fantasy Premier League squad for the upcoming gameweek.")
 
 if st.button("🚀 Generate My Optimal Squad", type="primary"):
@@ -240,12 +179,35 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             col1.metric("Predicted Points (Full Squad)", f"{total_xp:.2f}")
             col2.metric("Total Squad Cost", f"£{total_cost:.1f}m")
             
-            display_pitch(starting_11, bench)
+            # --- Display the Dashboard UI ---
+            st.markdown("---")
+            st.header("⭐ Starting XI")
+            
+            # Create 4 columns for a balanced layout
+            c1, c2, c3, c4 = st.columns(4)
+            starting_players_list = starting_11.sort_values(by='element_type').to_dict('records')
+
+            # Distribute players into columns
+            for i, player in enumerate(starting_players_list):
+                if i % 4 == 0:
+                    display_player_card(player, c1)
+                elif i % 4 == 1:
+                    display_player_card(player, c2)
+                elif i % 4 == 2:
+                    display_player_card(player, c3)
+                else:
+                    display_player_card(player, c4)
 
             st.markdown("---")
-            st.header("🔴 Live Gameweek Tracker")
-            st.info("This feature is under development. Check back during a live match to see real-time point updates for your squad!")
+            st.header("🪑 Substitutes")
 
+            bench_cols = st.columns(4)
+            bench_players_list = bench.to_dict('records')
+
+            for i, player in enumerate(bench_players_list):
+                display_player_card(player, bench_cols[i])
+
+            # --- Display Chip Strategy ---
             st.markdown("---")
             st.subheader("💡 FPL Chip Strategy Guide")
             tc_candidate = final_squad.sort_values(by='xP', ascending=False).iloc[0]
