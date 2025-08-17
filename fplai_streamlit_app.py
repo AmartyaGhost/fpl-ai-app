@@ -1,5 +1,5 @@
 # fpl_streamlit_app.py
-# FPL AI Optimizer (v7 - Final Version with Embedded UI)
+# FPL AI Optimizer (v8 - Final Version with UI Fix)
 # By Gemini
 
 import streamlit as st
@@ -124,50 +124,54 @@ def get_starting_lineup(squad_df):
 def display_player(player_series):
     """Displays a single player's image and info."""
     player_image_url = f"https://resources.premierleague.com/premierleague/photos/players/110x140/p{player_series['code']}.png"
-    st.image(player_image_url, width=80)
-    st.markdown(f"<p style='text-align: center; font-weight: bold; font-size: 12px; color: white; background-color: #008f5a; border-radius: 3px; padding: 2px;'>{player_series['web_name']}</p>", unsafe_allow_html=True)
-    st.markdown(f"<p style='text-align: center; font-size: 11px; color: white; background-color: #273746; border-radius: 3px; padding: 2px;'>xP: {player_series['xP']:.2f}</p>", unsafe_allow_html=True)
+    st.image(player_image_url, width=70)
+    st.markdown(f"<p style='text-align: center; font-weight: bold; font-size: 12px; color: black; background-color: #fafafa; border-radius: 3px; padding: 2px 0px;'>{player_series['web_name']}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; font-size: 11px; color: white; background-color: #000000; border-radius: 3px; padding: 2px 0px;'>xP: {player_series['xP']:.2f}</p>", unsafe_allow_html=True)
 
 def display_pitch(starting_11, bench):
     """Displays the starting 11 on a football pitch and the bench."""
     
     # --- THIS IS THE CORRECTED CODE ---
-    # We embed the pitch image directly into the app's styling using Base64.
-    # This prevents external loading issues and guarantees the background will appear.
+    # This CSS forces a white background and embeds the pitch image, making it theme-proof.
     pitch_image_base64 = "iVBORw0KGgoAAAANSUhEUgAAA5UAAALQCAMAAACj2okIAAAAVFBMVEX///8AmboAn7wAmroAnbwAnLsAl7sAasoAmLsAagAAmroAnbwAm7sAmrsAmLsAmrsAnbwAnLsAm7oAnLsAnbwAmroAnLsAmrsAnbwAn7sAnLsAnbwAmrsAnLwAm7sAnLsAnbvgYV/DAAAAFnRSTlP+/////////v7+/v7+/v7+/v7+/v7+/v42BUnlAAAB90lEQVR42uzQMQEAAAgDINvf2t9aQID/AAEFBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBAQEBQQEBDwB028AAGGm1yCAAAAAElFTkSuQmCC"
     pitch_css = f"""
     <style>
+    .pitch-wrapper {{
+        background-color: white;
+        padding: 10px;
+        border-radius: 10px;
+    }}
     .pitch-container {{
         background-image: url(data:image/png;base64,{pitch_image_base64});
         background-size: contain;
         background-repeat: no-repeat;
         background-position: center;
-        padding: 40px 20px;
-        border-radius: 10px;
-        height: 600px;
-        position: relative;
+        padding: 20px;
+        height: 550px; /* Adjusted height */
     }}
     </style>
     """
     st.markdown(pitch_css, unsafe_allow_html=True)
     
+    st.markdown('<div class="pitch-wrapper">', unsafe_allow_html=True)
     st.markdown('<div class="pitch-container">', unsafe_allow_html=True)
 
     gkp = starting_11[starting_11['position'] == 'GKP']
     defs = starting_11[starting_11['position'] == 'DEF'].sort_values('web_name')
     mids = starting_11[starting_11['position'] == 'MID'].sort_values('web_name')
     fwds = starting_11[starting_11['position'] == 'FWD'].sort_values('web_name')
-
-    # Add spacing from the top
-    st.write("")
-    st.write("")
+    
+    # --- ROW-BASED LAYOUT FOR BETTER ALIGNMENT ---
+    # Each 'row' is a horizontal container for a line of players
     
     # Goalkeeper Row
     if not gkp.empty:
-        gkp_cols = st.columns([1, 1, 1])
-        with gkp_cols[1]:
+        gkp_row = st.columns([1, 1, 1]) # Center the goalkeeper
+        with gkp_row[1]:
             display_player(gkp.iloc[0])
-            
+    
+    st.write("") # Add spacing
+    
     # Defender Row
     if not defs.empty:
         def_cols = st.columns(len(defs))
@@ -175,21 +179,29 @@ def display_pitch(starting_11, bench):
             with def_cols[i]:
                 display_player(player)
 
+    st.write("") # Add spacing
+
     # Midfielder Row
     if not mids.empty:
         mid_cols = st.columns(len(mids))
         for i, (_, player) in enumerate(mids.iterrows()):
             with mid_cols[i]:
                 display_player(player)
+    
+    st.write("") # Add spacing
                 
     # Forward Row
     if not fwds.empty:
-        fwd_cols = st.columns(len(fwds))
+        max_fwds = 3 # FPL max forwards
+        # Create empty columns on either side to center the players
+        padding_left = (max_fwds - len(fwds)) / 2
+        padding_right = (max_fwds - len(fwds)) / 2
+        fwd_cols = st.columns([padding_left] + [1]*len(fwds) + [padding_right])
         for i, (_, player) in enumerate(fwds.iterrows()):
-            with fwd_cols[i]:
+            with fwd_cols[i+1]: # Add 1 to index to account for left padding column
                 display_player(player)
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div></div>', unsafe_allow_html=True) # Close both containers
     st.write("")
 
     # Display the Bench
