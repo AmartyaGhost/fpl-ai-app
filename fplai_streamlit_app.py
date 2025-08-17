@@ -1,16 +1,68 @@
 # fpl_streamlit_app.py
-# FPL AI Optimizer (v13 - Live Tracker Section)
+# FPL AI Optimizer (v14 - Enhanced UI & Live Scoreboard)
 # By Gemini
 
 import streamlit as st
 import requests
 import pandas as pd
 import pulp
+from streamlit_autorefresh import st_autorefresh
 
 # --- Page Configuration ---
 st.set_page_config(page_title="FPL AI Optimizer", page_icon="⚽", layout="wide")
 
-# --- Team Jersey Mapping ---
+# --- Custom Styling ---
+st.markdown("""
+<style>
+    /* Main title banner */
+    .title-banner {
+        background-color: #37003c; /* FPL purple */
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        color: white;
+        margin-bottom: 20px;
+    }
+    .title-banner h1 {
+        font-size: 3em;
+        font-weight: bold;
+        margin: 0;
+    }
+    .title-banner p {
+        font-size: 1.2em;
+        margin-top: 5px;
+    }
+    /* Scoreboard styling */
+    .scoreboard-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #27002c;
+        margin-bottom: 8px;
+    }
+    .team-name {
+        font-size: 1.1em;
+        font-weight: bold;
+        text-align: center;
+        flex: 3;
+    }
+    .team-crest {
+        height: 40px;
+        width: 40px;
+        flex: 1;
+    }
+    .score {
+        font-size: 1.5em;
+        font-weight: bold;
+        text-align: center;
+        flex: 1;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- Team Data Mappings ---
 TEAM_JERSEYS = {
     'Arsenal': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_3-66.png',
     'Aston Villa': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_7-66.png',
@@ -34,7 +86,6 @@ TEAM_JERSEYS = {
     'Sunderland': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_49-66.png'
 }
 
-
 # --- FPL LOGIC (Functions are cached to avoid re-fetching data on every interaction) ---
 
 @st.cache_data(ttl=3600)
@@ -47,7 +98,7 @@ def fetch_live_fpl_data():
         data = response.json()
     except requests.exceptions.RequestException as e:
         st.error(f"Error fetching data: {e}")
-        return None, None, None, None
+        return None, None, None, None, None
 
     players_df = pd.DataFrame(data['elements'])
     teams_df = pd.DataFrame(data['teams'])
@@ -59,10 +110,11 @@ def fetch_live_fpl_data():
             current_gw = gw['id']
             break
             
-    return players_df, teams_df, positions_df, current_gw
+    team_crests = {team['id']: f"https://resources.premierleague.com/premierleague/badges/70/t{team['code']}.png" for team in data['teams']}
+            
+    return players_df, teams_df, positions_df, current_gw, team_crests
 
-# --- NEW: Function to get live gameweek data ---
-@st.cache_data(ttl=60) # Cache live data for 60 seconds
+@st.cache_data(ttl=60)
 def fetch_live_gameweek_data(gameweek_id):
     """Fetches live match data for a specific gameweek."""
     if not gameweek_id:
@@ -170,7 +222,6 @@ def get_starting_lineup(squad_df):
 # --- UI HELPER FUNCTIONS ---
 
 def display_player_card(player_series, container, live_points=None):
-    """Displays a player card, optionally with live points."""
     with container:
         with st.container(border=True):
             col1, col2 = st.columns([1, 2])
@@ -185,75 +236,76 @@ def display_player_card(player_series, container, live_points=None):
             with col2:
                 st.markdown(f"**{player_series['web_name']}**")
                 st.markdown(f"<small>{player_series['team_name']} | {player_series['position']}</small>", unsafe_allow_html=True)
-                # Show live points if available, otherwise show predicted points
                 if live_points is not None:
                     st.metric(label="Live Points", value=live_points)
                 else:
                     st.metric(label="Predicted Points (xP)", value=f"{player_series['xP']:.2f}")
 
-# --- NEW: Live Tracker UI ---
-def display_live_tracker(squad, live_data, fixtures_data, teams_df):
-    st.header("🔴 Live Gameweek Tracker")
+def display_live_scoreboard(fixtures_data, teams_df, team_crests):
+    st.header("🔴 Live Gameweek Scoreboard")
     
-    if not fixtures_data or 'elements' not in live_data:
+    if not fixtures_data:
         st.warning("Live match data is not available at the moment.")
         return
 
-    # Create a mapping for player IDs to their live points
-    live_points_map = {p['id']: p['stats']['total_points'] for p in live_data['elements']}
-    
-    # Create a mapping for team IDs to names
     team_name_map = teams_df.set_index('id')['name'].to_dict()
 
-    # Display live fixtures
-    st.subheader("Live Fixtures")
     for fixture in fixtures_data:
-        home_team = team_name_map.get(fixture['team_h'], 'N/A')
-        away_team = team_name_map.get(fixture['team_a'], 'N/A')
-        score = f"{fixture['team_h_score']} - {fixture['team_a_score']}" if fixture['started'] else "vs"
-        status = "Finished" if fixture['finished'] else "In Progress" if fixture['started'] else "Not Started"
-        st.write(f"- {home_team} {score} {away_team} ({status})")
+        home_team_id = fixture['team_h']
+        away_team_id = fixture['team_a']
+        
+        home_team_name = team_name_map.get(home_team_id, 'N/A')
+        away_team_name = team_name_map.get(away_team_id, 'N/A')
+        
+        home_crest_url = team_crests.get(home_team_id, '')
+        away_crest_url = team_crests.get(away_team_id, '')
 
-    st.markdown("---")
-    st.subheader("Your Players' Live Scores")
-    
-    # Add live points to the squad dataframe
-    squad['live_points'] = squad['id'].map(live_points_map).fillna(0).astype(int)
-    
-    # Display players with their live scores
-    c1, c2, c3, c4 = st.columns(4)
-    cols = [c1, c2, c3, c4]
-    
-    squad_list = squad.sort_values(by='element_type').to_dict('records')
-    for i, player in enumerate(squad_list):
-        display_player_card(player, cols[i % 4], live_points=player['live_points'])
+        if fixture['started']:
+            score = f"{fixture['team_h_score']} - {fixture['team_a_score']}"
+        else:
+            kickoff_time = pd.to_datetime(fixture['kickoff_time']).strftime('%H:%M')
+            score = kickoff_time
 
+        # Using HTML/CSS for a custom layout
+        st.markdown(f"""
+        <div class="scoreboard-row">
+            <div class="team-name" style="text-align: right; padding-right: 10px;">{home_team_name}</div>
+            <img src="{home_crest_url}" class="team-crest">
+            <div class="score">{score}</div>
+            <img src="{away_crest_url}" class="team-crest">
+            <div class="team-name" style="text-align: left; padding-left: 10px;">{away_team_name}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # --- MAIN STREAMLIT APP ---
 
-st.title("⚽ FPL AI Optimizer Dashboard")
-st.write("This app uses real-time data to find the optimal Fantasy Premier League squad for the upcoming gameweek.")
+# Beautified Title Banner
+st.markdown("""
+<div class="title-banner">
+    <h1>FPL AI OPTIMIZER</h1>
+    <p>Your AI-Powered Fantasy Football Assistant</p>
+</div>
+""", unsafe_allow_html=True)
 
 if st.button("🚀 Generate My Optimal Squad", type="primary"):
+    # Activate auto-refresh
+    st_autorefresh(interval=60 * 1000, key="datarefresh")
     
     with st.spinner("🧠 Running the AI Optimizer... This might take a moment."):
-        players, teams, positions, current_gw = fetch_live_fpl_data()
+        players, teams, positions, current_gw, team_crests = fetch_live_fpl_data()
         
         if players is None:
             st.error("Failed to load data. Please try again later.")
         else:
-            # --- This is the main execution block ---
             available_players = engineer_features(players, teams, positions)
             predicted_players = create_simulated_prediction(available_players)
             final_squad = optimize_squad(predicted_players)
             starting_11, bench = get_starting_lineup(final_squad)
 
-            # Fetch live data for the tracker
             fixtures_data, live_data = fetch_live_gameweek_data(current_gw)
 
             st.success(f"Optimal Squad Found for Gameweek {current_gw}!")
             
-            # --- Display metrics and captaincy picks ---
             total_xp = final_squad['xP'].sum()
             total_cost = final_squad['now_cost'].sum() / 10.0
 
@@ -261,6 +313,11 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             col1.metric("Predicted Points (Full Squad)", f"{total_xp:.2f}")
             col2.metric("Total Squad Cost", f"£{total_cost:.1f}m")
             
+            # --- Live Scoreboard Display ---
+            st.markdown("---")
+            display_live_scoreboard(fixtures_data, teams, team_crests)
+            
+            # --- Captaincy Picks ---
             st.markdown("---")
             st.header("©️ Captaincy Picks")
             
@@ -269,19 +326,10 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             vice_captain = squad_sorted_by_xp.iloc[1]
             
             cap_col, vc_col = st.columns(2)
-            with cap_col:
-                st.subheader("Captain (C)")
-                display_player_card(captain, cap_col)
+            display_player_card(captain, cap_col)
+            display_player_card(vice_captain, vc_col)
             
-            with vc_col:
-                st.subheader("Vice-Captain (VC)")
-                display_player_card(vice_captain, vc_col)
-            
-            # --- Display the Live Tracker ---
-            st.markdown("---")
-            display_live_tracker(final_squad, live_data, fixtures_data, teams)
-
-            # --- Display the Squad UI ---
+            # --- Squad Display ---
             st.markdown("---")
             st.header("⭐ Starting XI")
             
@@ -296,7 +344,7 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             for i, player in enumerate(bench.to_dict('records')):
                 display_player_card(player, bench_cols[i])
 
-            # --- Display Chip Strategy ---
+            # --- Chip Strategy ---
             st.markdown("---")
             st.subheader("💡 FPL Chip Strategy Guide")
             st.info(f"**This Week's Triple Captain Pick:** {captain['web_name']} ({captain['team_name']}) with a predicted score of {captain['xP']:.2f} points.")
