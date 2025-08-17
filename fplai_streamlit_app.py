@@ -1,8 +1,6 @@
 # fpl_streamlit_app.py
-# FPL AI Optimizer (v5 - Streamlit UI Version)
-# By Gemini
+# FPL AI Optimizer (v6 - Final Version with Visual UI)
 
-# --- Core Libraries ---
 import streamlit as st
 import requests
 import pandas as pd
@@ -87,7 +85,116 @@ def optimize_squad(player_df):
     optimal_squad = player_df[player_df['id'].isin(selected_player_ids)]
     return optimal_squad.sort_values(by='element_type')
 
-# --- STREAMLIT UI LAYOUT ---
+def get_starting_lineup(squad_df):
+    """
+    Selects the best starting 11 from the 15-man squad.
+    This is a simplified version; a more complex one would consider fixture difficulty.
+    """
+    # Sort by predicted points to prioritize high-scoring players
+    squad_df = squad_df.sort_values(by='xP', ascending=False)
+    
+    starting_11 = pd.DataFrame()
+    positions = {'GKP': 1, 'DEF': 3, 'MID': 2, 'FWD': 1} # Minimum players in each position
+    
+    # Add minimum players for each position first
+    for pos, min_count in positions.items():
+        players_in_pos = squad_df[squad_df['position'] == pos]
+        starting_11 = pd.concat([starting_11, players_in_pos.head(min_count)])
+
+    # Fill remaining spots with the best available players, respecting positional maximums
+    remaining_players = squad_df.drop(starting_11.index)
+    
+    while len(starting_11) < 11:
+        best_remaining = remaining_players.iloc[0]
+        pos = best_remaining['position']
+        
+        # Respect formation constraints (e.g., max 5 defenders)
+        if pos == 'DEF' and len(starting_11[starting_11['position'] == 'DEF']) < 5:
+            starting_11 = pd.concat([starting_11, best_remaining.to_frame().T])
+        elif pos == 'MID' and len(starting_11[starting_11['position'] == 'MID']) < 5:
+            starting_11 = pd.concat([starting_11, best_remaining.to_frame().T])
+        elif pos == 'FWD' and len(starting_11[starting_11['position'] == 'FWD']) < 3:
+            starting_11 = pd.concat([starting_11, best_remaining.to_frame().T])
+        
+        remaining_players = remaining_players.iloc[1:]
+
+    bench = squad_df.drop(starting_11.index).sort_values(by='element_type')
+    return starting_11, bench
+
+
+# --- UI HELPER FUNCTIONS ---
+
+def display_player(player_series):
+    """Displays a single player's image and info."""
+    player_image_url = f"https://resources.premierleague.com/premierleague/photos/players/110x140/p{player_series['code']}.png"
+    st.image(player_image_url, width=80)
+    st.markdown(f"<p style='text-align: center; font-weight: bold; font-size: 12px;'>{player_series['web_name']}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; font-size: 11px;'>xP: {player_series['xP']:.2f}</p>", unsafe_allow_html=True)
+
+def display_pitch(starting_11, bench):
+    """Displays the starting 11 on a football pitch and the bench."""
+    
+    # Custom CSS for the pitch background
+    pitch_css = f"""
+    <style>
+    .pitch-container {{
+        background-image: url('https://i.imgur.com/2T5rgU4.png');
+        background-size: cover;
+        background-repeat: no-repeat;
+        padding: 20px;
+        border-radius: 10px;
+        height: 600px;
+        position: relative;
+    }}
+    </style>
+    """
+    st.markdown(pitch_css, unsafe_allow_html=True)
+    
+    st.markdown('<div class="pitch-container">', unsafe_allow_html=True)
+
+    # Filter players by position
+    gkp = starting_11[starting_11['position'] == 'GKP']
+    defs = starting_11[starting_11['position'] == 'DEF']
+    mids = starting_11[starting_11['position'] == 'MID']
+    fwds = starting_11[starting_11['position'] == 'FWD']
+
+    # Display players in their positions using columns
+    # Goalkeeper Row
+    gkp_cols = st.columns(3)
+    with gkp_cols[1]:
+        for _, player in gkp.iterrows():
+            display_player(player)
+
+    # Defender Row
+    def_cols = st.columns(len(defs) if len(defs) > 0 else 1)
+    for i, (_, player) in enumerate(defs.iterrows()):
+        with def_cols[i]:
+            display_player(player)
+    
+    # Midfielder Row
+    mid_cols = st.columns(len(mids) if len(mids) > 0 else 1)
+    for i, (_, player) in enumerate(mids.iterrows()):
+        with mid_cols[i]:
+            display_player(player)
+            
+    # Forward Row
+    fwd_cols = st.columns(len(fwds) if len(fwds) > 0 else 1)
+    for i, (_, player) in enumerate(fwds.iterrows()):
+        with fwd_cols[i]:
+            display_player(player)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Display the Bench
+    st.markdown("---")
+    st.subheader("Substitutes")
+    bench_cols = st.columns(4)
+    for i, (_, player) in enumerate(bench.iterrows()):
+        with bench_cols[i]:
+            display_player(player)
+
+
+# --- MAIN STREAMLIT APP ---
 
 st.title("⚽ FPL AI Optimizer")
 st.write("This app uses real-time data to find the optimal Fantasy Premier League squad for the upcoming gameweek.")
@@ -103,6 +210,7 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             available_players = engineer_features(players, teams, positions)
             predicted_players = create_simulated_prediction(available_players)
             final_squad = optimize_squad(predicted_players)
+            starting_11, bench = get_starting_lineup(final_squad)
 
             st.success(f"Optimal Squad Found for Gameweek {current_gw}!")
             
@@ -110,30 +218,28 @@ if st.button("🚀 Generate My Optimal Squad", type="primary"):
             total_cost = final_squad['now_cost'].sum() / 10.0
 
             col1, col2 = st.columns(2)
-            col1.metric("Predicted Points", f"{total_xp:.2f}")
+            col1.metric("Predicted Points (Full Squad)", f"{total_xp:.2f}")
             col2.metric("Total Squad Cost", f"£{total_cost:.1f}m")
             
-            display_cols = ['web_name', 'position', 'team_name', 'now_cost', 'xP']
-            final_squad['now_cost'] = final_squad['now_cost'] / 10.0
-            final_squad['xP'] = round(final_squad['xP'], 2)
-            
-            display_df = final_squad[display_cols].rename(columns={
-                'web_name': 'Player',
-                'position': 'Pos',
-                'team_name': 'Team',
-                'now_cost': 'Price (£m)',
-                'xP': 'xP'
-            }).reset_index(drop=True)
-            
-            st.dataframe(display_df, use_container_width=True)
-            
+            # --- Display the Pitch UI ---
+            display_pitch(starting_11, bench)
+
+            # --- Placeholder for Live Tracking Feature ---
+            st.markdown("---")
+            st.header("🔴 Live Gameweek Tracker")
+            st.info("This feature is under development. Check back during a live match to see real-time point updates for your squad!")
+            # Note: Implementing the full live feature is an advanced task.
+            # It would involve using st_autorefresh and repeatedly calling a live FPL API endpoint.
+
+            # --- Display Chip Strategy ---
+            st.markdown("---")
             st.subheader("💡 FPL Chip Strategy Guide")
-            tc_candidate = final_squad.loc[final_squad['xP'].idxmax()]
+            tc_candidate = final_squad.sort_values(by='xP', ascending=False).iloc[0]
             st.info(f"**This Week's Triple Captain Pick:** {tc_candidate['web_name']} ({tc_candidate['team_name']}) with a predicted score of {tc_candidate['xP']:.2f} points.")
             
             with st.expander("See General Chip Strategy Advice"):
                 st.markdown("""
-                - **Wildcard (WC):** Use the first one around GW 4-8 to adapt to early season form. Use the second one late in the season (GW 30+) to prepare for a big Double Gameweek.
+                - **Wildcard (WC):** Use the first one around GW 4-8. Use the second one late in the season (GW 30+) to prepare for a big Double Gameweek.
                 - **Bench Boost (BB):** Only use this in a **Double Gameweek (DGW)** when you have 15 players who are all playing twice.
                 - **Triple Captain (TC):** Best saved for a **Double Gameweek (DGW)** on a premium player with two favorable fixtures.
                 - **Free Hit (FH):** Best used to navigate a **Blank Gameweek (BGW)** where many of your players don't have a match.
