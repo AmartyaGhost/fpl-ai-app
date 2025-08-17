@@ -18,6 +18,7 @@ st.set_page_config(
 class FPLDataManager:
     def __init__(self):
         self.base_url = "https://fantasy.premierleague.com/api/"
+        self.sports_api_url = "https://api.football-data.org/v4/"
         self.session = requests.Session()
 
     @st.cache_data(ttl=3600)
@@ -25,15 +26,22 @@ class FPLDataManager:
         """Gets the main FPL bootstrap data."""
         return _self.session.get(f"{_self.base_url}bootstrap-static/").json()
 
-    @st.cache_data(ttl=3600)
-    def get_fixtures(_self):
-        """Gets all fixture data."""
-        return _self.session.get(f"{_self.base_url}fixtures/").json()
-
-    # [FIX] Removed caching from the live data function to allow for real-time updates.
-    def get_live_gameweek_data(_self, gameweek):
-        """Gets live data for a specific gameweek."""
-        return _self.session.get(f"{_self.base_url}event/{gameweek}/live/").json()
+    # [NEW] Function to fetch live scores from a real API
+    def get_live_scores(_self, api_key):
+        """Fetches live PL scores from football-data.org API."""
+        if not api_key:
+            return None # Return None if no key is provided
+        
+        headers = {'X-Auth-Token': api_key}
+        # The Premier League competition ID on this API is 'PL'
+        uri = f'{_self.sports_api_url}competitions/PL/matches?status=LIVE,IN_PLAY,PAUSED'
+        try:
+            response = _self.session.get(uri, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            st.error(f"Error fetching live scores: {e}. Check your API key and network.")
+            return None
 
     @st.cache_data
     def get_team_data(_self):
@@ -47,7 +55,8 @@ class FPLDataManager:
 
     def get_live_manager_team(self, manager_id, gameweek):
         """Gets a manager's live team and points."""
-        live_data = self.get_live_gameweek_data(gameweek)
+        live_data_url = f"{self.base_url}event/{gameweek}/live/"
+        live_data = self.session.get(live_data_url).json()
         
         if 'elements' not in live_data or not live_data['elements']:
             return pd.DataFrame(columns=['Player', 'Points'])
@@ -261,7 +270,6 @@ def optimizer_page():
                          .sort_values('predicted_points', ascending=False).reset_index(drop=True), height=350)
 
 def live_tracker_page():
-    # [FIX] Add the meta refresh tag to auto-refresh the page every 30 seconds
     st.markdown('<meta http-equiv="refresh" content="30">', unsafe_allow_html=True)
     
     st.title("Live Gameweek Tracker 📈")
@@ -269,8 +277,12 @@ def live_tracker_page():
     
     dm = FPLDataManager()
     
+    # [NEW] Sidebar input for the API key
+    st.sidebar.subheader("Live Scoreboard API")
+    api_key = st.sidebar.text_input("Enter football-data.org API Key", type="password")
+    
     bootstrap = dm.get_bootstrap_data()
-    teams = dm.get_team_data().set_index('short_name')
+    teams = dm.get_team_data() # Get team data for crests
     current_gw = next((gw['id'] for gw in bootstrap['events'] if gw['is_current']), None)
     
     if not current_gw:
@@ -305,37 +317,37 @@ def live_tracker_page():
             </style>
         """, unsafe_allow_html=True)
             
-        live_scores = [
-            {"home": "CHE", "away": "CRY", "score": "0 - 0", "time": "FT", "status": "FINISHED", "date": "Sun 17 Aug"},
-            {"home": "NFO", "away": "BRE", "score": "3 - 1", "time": "FT", "status": "FINISHED", "date": "Sun 17 Aug"},
-            {"home": "MUN", "away": "ARS", "score": "0 - 1", "time": "73'", "status": "LIVE", "date": "Sun 17 Aug"},
-            {"home": "WOL", "away": "EVE", "score": "00:30", "time": "00:30 IST", "status": "SCHEDULED", "date": "Tue 19 Aug"},
-        ]
+        # [NEW] Fetch live scores using the API key
+        live_scores_data = dm.get_live_scores(api_key)
         
-        current_date = ""
-        for match in live_scores:
-            if match['date'] != current_date:
-                st.markdown(f"**{match['date']}**")
-                current_date = match['date']
+        if not api_key:
+            st.warning("Please enter your football-data.org API key in the sidebar to see live scores.")
+        elif live_scores_data and live_scores_data['matches']:
+            for match in live_scores_data['matches']:
+                home_team = teams[teams['id'] == match['homeTeam']['id']].iloc[0]
+                away_team = teams[teams['id'] == match['awayTeam']['id']].iloc[0]
 
-            home_crest = teams.loc[match['home']]['crest_url']
-            away_crest = teams.loc[match['away']]['crest_url']
-            live_indicator = "<span class='blinking-dot'></span>" if match['status'] == 'LIVE' else ''
-            
-            st.markdown(f"""
-                <div class="match-row">
-                    <div class="status">{live_indicator}{match['time']}</div>
-                    <div class="team" style="justify-content: flex-end;">
-                        <span class="team-name">{teams.loc[match['home']]['name']}</span>
-                        <img src="{home_crest}" width="25">
+                score = f"{match['score']['fullTime']['home']} - {match['score']['fullTime']['away']}"
+                time = f"{match['minute']}'" if match['status'] == 'IN_PLAY' else match['status'].replace('_', ' ').title()
+                live_indicator = "<span class='blinking-dot'></span>" if match['status'] == 'IN_PLAY' else ''
+
+                st.markdown(f"""
+                    <div class="match-row">
+                        <div class="status">{live_indicator}{time}</div>
+                        <div class="team" style="justify-content: flex-end;">
+                            <span class="team-name">{home_team['name']}</span>
+                            <img src="{home_team['crest_url']}" width="25">
+                        </div>
+                        <div class="score">{score}</div>
+                        <div class="team">
+                            <img src="{away_team['crest_url']}" width="25">
+                            <span class="team-name">{away_team['name']}</span>
+                        </div>
                     </div>
-                    <div class="score">{match['score']}</div>
-                    <div class="team">
-                        <img src="{away_crest}" width="25">
-                        <span class="team-name">{teams.loc[match['away']]['name']}</span>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+        else:
+            st.info("No live matches currently in play according to the API.")
+
 
 def get_chip_recommendation(squad_df: pd.DataFrame):
     """Generates a chip recommendation for the current gameweek."""
@@ -370,7 +382,6 @@ def strategy_guide_page():
 
     st.info(recommendation)
     
-    # [FIX] Removed the broken st.image call
     st.markdown("""
     Here is a general guide on when to consider using your chips throughout the season.
     
