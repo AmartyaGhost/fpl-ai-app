@@ -5,6 +5,7 @@ import requests
 import time
 import pulp
 from typing import Dict, List
+from datetime import datetime, timedelta
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -20,27 +21,25 @@ class FPLDataManager:
         self.base_url = "https://fantasy.premierleague.com/api/"
         self.sports_api_url = "https://api.football-data.org/v4/"
         self.session = requests.Session()
+        # API Key for football-data.org
+        self.api_key = "b2bc14db19954430b18a71b08d9cce2a"
 
     @st.cache_data(ttl=3600)
     def get_bootstrap_data(_self):
         """Gets the main FPL bootstrap data."""
         return _self.session.get(f"{_self.base_url}bootstrap-static/").json()
 
-    # [NEW] Function to fetch live scores from a real API
-    def get_live_scores(_self, api_key):
-        """Fetches live PL scores from football-data.org API."""
-        if not api_key:
-            return None # Return None if no key is provided
-        
-        headers = {'X-Auth-Token': api_key}
-        # The Premier League competition ID on this API is 'PL'
-        uri = f'{_self.sports_api_url}competitions/PL/matches?status=LIVE,IN_PLAY,PAUSED'
+    # [UPDATED] Function now fetches all matches for a specific gameweek
+    def get_live_scores(_self, gameweek):
+        """Fetches all PL scores for a gameweek from football-data.org API."""
+        headers = {'X-Auth-Token': _self.api_key}
+        uri = f'{_self.sports_api_url}competitions/PL/matches?matchday={gameweek}'
         try:
             response = _self.session.get(uri, headers=headers)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            st.error(f"Error fetching live scores: {e}. Check your API key and network.")
+            st.error(f"Error fetching live scores: {e}. The API key may be invalid or the service is down.")
             return None
 
     @st.cache_data
@@ -277,12 +276,8 @@ def live_tracker_page():
     
     dm = FPLDataManager()
     
-    # [NEW] Sidebar input for the API key
-    st.sidebar.subheader("Live Scoreboard API")
-    api_key = st.sidebar.text_input("Enter football-data.org API Key", type="password")
-    
     bootstrap = dm.get_bootstrap_data()
-    teams = dm.get_team_data() # Get team data for crests
+    teams = dm.get_team_data()
     current_gw = next((gw['id'] for gw in bootstrap['events'] if gw['is_current']), None)
     
     if not current_gw:
@@ -313,32 +308,53 @@ def live_tracker_page():
                 .team { display: flex; align-items: center; width: 120px; }
                 .team-name { margin: 0 10px; }
                 .score { font-weight: bold; font-size: 1.2em; }
-                .status { text-align: center; width: 50px; }
+                .status { text-align: center; width: 50px; font-size: 0.9em;}
             </style>
         """, unsafe_allow_html=True)
             
-        # [NEW] Fetch live scores using the API key
-        live_scores_data = dm.get_live_scores(api_key)
+        live_scores_data = dm.get_live_scores(gameweek=current_gw)
         
-        if not api_key:
-            st.warning("Please enter your football-data.org API key in the sidebar to see live scores.")
-        elif live_scores_data and live_scores_data['matches']:
-            for match in live_scores_data['matches']:
+        if live_scores_data and live_scores_data['matches']:
+            matches_df = pd.DataFrame(live_scores_data['matches'])
+            matches_df['utcDate'] = pd.to_datetime(matches_df['utcDate'])
+            matches_df = matches_df.sort_values(by='utcDate')
+
+            current_date = ""
+            for _, match in matches_df.iterrows():
+                utc_time = match['utcDate']
+                ist_time = utc_time + timedelta(hours=5, minutes=30)
+                match_date_str = ist_time.strftime('%a %d %b') # e.g., Sun 17 Aug
+                
+                if match_date_str != current_date:
+                    st.markdown(f"<h5 style='margin-top: 20px;'>{match_date_str}</h5>", unsafe_allow_html=True)
+                    current_date = match_date_str
+
                 home_team = teams[teams['id'] == match['homeTeam']['id']].iloc[0]
                 away_team = teams[teams['id'] == match['awayTeam']['id']].iloc[0]
-
-                score = f"{match['score']['fullTime']['home']} - {match['score']['fullTime']['away']}"
-                time = f"{match['minute']}'" if match['status'] == 'IN_PLAY' else match['status'].replace('_', ' ').title()
-                live_indicator = "<span class='blinking-dot'></span>" if match['status'] == 'IN_PLAY' else ''
+                
+                status = match['status']
+                if status == 'FINISHED':
+                    time_display = "FT"
+                    score_display = f"{match['score']['fullTime']['home']} - {match['score']['fullTime']['away']}"
+                    live_indicator = ""
+                elif status in ('IN_PLAY', 'PAUSED'):
+                    minute = match.get('minute', 'HT')
+                    time_display = f"{minute}'" if isinstance(minute, int) else "HT"
+                    score_display = f"{match['score']['fullTime']['home']} - {match['score']['fullTime']['away']}"
+                    live_indicator = "<span class='blinking-dot'></span>"
+                else: # SCHEDULED or TIMED
+                    time_display = "IST"
+                    score_display = ist_time.strftime('%H:%M')
+                    live_indicator = ""
 
                 st.markdown(f"""
                     <div class="match-row">
-                        <div class="status">{live_indicator}{time}</div>
+                        <div class="status">{live_indicator}{time_display}</div>
                         <div class="team" style="justify-content: flex-end;">
                             <span class="team-name">{home_team['name']}</span>
                             <img src="{home_team['crest_url']}" width="25">
                         </div>
-                        <div class="score">{score}</div>
+                        <div class="score">{score_display}</div>
                         <div class="team">
                             <img src="{away_team['crest_url']}" width="25">
                             <span class="team-name">{away_team['name']}</span>
@@ -346,7 +362,7 @@ def live_tracker_page():
                     </div>
                 """, unsafe_allow_html=True)
         else:
-            st.info("No live matches currently in play according to the API.")
+            st.info("Could not fetch live match data. This may be due to an invalid API key or no matches scheduled.")
 
 
 def get_chip_recommendation(squad_df: pd.DataFrame):
@@ -388,23 +404,23 @@ def strategy_guide_page():
     ---
     ### Wildcard (WC) 🃏
     You get two of these. Use them to completely overhaul your team.
-    - **First Wildcard (Use before GW20):** The best time is typically between **Gameweeks 4 and 8**. By then, you'll have enough data to see which players and teams are over/under-performing.
-    - **Second Wildcard (Use after GW20):** This is best saved for navigating the big "Double Gameweeks" (DGWs) and "Blank Gameweeks" (BGWs) later in the season, usually around **GW28-GW36**.
+    - **First Wildcard (Use before GW20):** The best time is typically between **Gameweeks 4 and 8**.
+    - **Second Wildcard (Use after GW20):** Best saved for navigating "Double" (DGWs) and "Blank" (BGWs) Gameweeks, usually around **GW28-GW36**.
     
     ---
     ### Bench Boost (BB) ⚡
     All 15 of your players score points for one week.
-    - **When to use:** Only use this during a **Double Gameweek (DGW)**. The ideal time is when you can use your Wildcard the week before to build a squad of 15 players who all have two matches.
+    - **When to use:** Only use this during a **Double Gameweek (DGW)**.
     
     ---
     ### Triple Captain (TC) ©️
     Your captain's points are tripled instead of doubled.
-    - **When to use:** Use this on a star player during a **Double Gameweek (DGW)**. A top-tier attacker with two favorable fixtures is the perfect candidate.
+    - **When to use:** Use this on a star player during a **Double Gameweek (DGW)**.
     
     ---
     ### Free Hit (FH) 🆓
-    Lets you make unlimited transfers for a single gameweek before your squad reverts back.
-    - **When to use:** The best time is during a **Blank Gameweek (BGW)** where many teams don't have a match, and your original squad is decimated.
+    Lets you make unlimited transfers for a single gameweek.
+    - **When to use:** The best time is during a **Blank Gameweek (BGW)** where many teams don't have a match.
     """)
 
 # --- Main App Navigation ---
