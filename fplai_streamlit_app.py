@@ -1,6 +1,5 @@
 # fpl_streamlit_app.py
-# FPL AI Optimizer (v16 - Final Header)
-# By Gemini
+# FPL AI Optimizer
 
 import streamlit as st
 import requests
@@ -11,7 +10,6 @@ from datetime import datetime
 import pytz
 
 # --- Page Configuration ---
-# The page_icon now uses a lion emoji as a close representation of the Premier League logo
 st.set_page_config(page_title="FPL AI Optimizer", page_icon="🦁", layout="wide")
 
 # --- Custom Styling ---
@@ -87,7 +85,7 @@ TEAM_JERSEYS = {
     'Wolves': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_39-66.png',
     'Burnley': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_90-66.png',
     'Leeds': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_2-66.png',
-    'Sunderland': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_56-110.webp'
+    'Sunderland': 'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_49-66.png'
 }
 
 # --- FPL LOGIC (Functions are cached to avoid re-fetching data on every interaction) ---
@@ -195,7 +193,8 @@ def get_starting_lineup(squad_df):
         players_in_pos = squad_df[squad_df['position'] == pos]
         starting_11 = pd.concat([starting_11, players_in_pos.head(min_count)])
 
-    remaining_players = squad_df.drop(startin_11.index)
+    # --- THIS LINE IS CORRECTED ---
+    remaining_players = squad_df.drop(starting_11.index)
     
     while len(starting_11) < 11 and not remaining_players.empty:
         best_remaining = remaining_players.iloc[0]
