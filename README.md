@@ -7,8 +7,6 @@
 An intelligent, data-driven web application designed to help you dominate your Fantasy Premier League season. This tool uses player performance data and linear optimization to recommend the perfect 15-player squad, suggest weekly captains, and provide real-time gameweek tracking.
 
 
-*(Replace this line with a screenshot of your running app!)*
-
 ---
 
 ## ✨ Key Features
